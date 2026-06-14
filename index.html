@@ -612,7 +612,7 @@
   <!-- HOME -->
   <section class="screen active" id="screen-home">
     <div class="topbar">
-      <div><div class="h">Hallo, Daan</div>
+      <div><div class="h" id="home-greet">Hallo, Daan</div>
         <div class="sub" id="home-gym"><svg class="ic"><use href="#i-pin"/></svg> —</div></div>
       <div class="pill"><svg class="ic" style="color:var(--gold)"><use href="#i-coin"/></svg><span id="home-tokens">0</span></div>
     </div>
@@ -745,6 +745,13 @@
       <svg class="ic" style="font-size:18px;color:var(--txt3)"><use href="#i-chevron-right"/></svg>
     </div>
 
+    <div class="card tap" id="friendsCard" style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+      <svg class="ic" style="font-size:26px;color:var(--acc2)"><use href="#i-follow"/></svg>
+      <div style="flex:1;"><div style="font-size:15px;font-weight:600;">Vrienden</div>
+        <div style="font-size:12px;color:var(--txt2);" id="friends-sub">zoek mensen op naam en volg ze</div></div>
+      <svg class="ic" style="font-size:18px;color:var(--txt3)"><use href="#i-chevron-right"/></svg>
+    </div>
+
     <div class="sect" style="margin-top:4px;">Mijn voorkeuren <button class="link" id="prefSettingsBtn">aanpassen ›</button></div>
     <div id="prof-prefs" style="display:flex;flex-wrap:wrap;gap:7px;margin:0 2px 4px;"></div>
 
@@ -838,6 +845,20 @@
       <button class="iconbtn ghost" data-back="home" aria-label="Terug"><svg class="ic" style="font-size:24px"><use href="#i-chevron-left"/></svg></button>
       <div><div class="h">Profiel</div><div class="sub">van je vriend</div></div></div></div>
     <div id="friend-body"></div>
+  </section>
+
+  <!-- MENSEN ZOEKEN -->
+  <section class="screen" id="screen-search">
+    <div class="topbar"><div style="display:flex;align-items:center;gap:8px;">
+      <button class="iconbtn ghost" data-back="profile" aria-label="Terug"><svg class="ic" style="font-size:24px"><use href="#i-chevron-left"/></svg></button>
+      <div><div class="h">Mensen</div><div class="sub">zoek vrienden op naam</div></div></div></div>
+    <div class="searchbar"><svg class="ic"><use href="#i-search"/></svg><input id="people-search" placeholder="Zoek op naam…" autocomplete="off" /></div>
+    <div class="feed-tabs" id="peopleTabs" style="margin-top:12px;">
+      <div class="feed-tab on" data-ptab="search">Zoeken</div>
+      <div class="feed-tab" data-ptab="following">Volgend</div>
+      <div class="feed-tab" data-ptab="followers">Volgers</div>
+    </div>
+    <div id="people-list"></div>
   </section>
 </div>
 
@@ -1059,6 +1080,12 @@
   </div>
   <label class="pe-lbl">Naam</label>
   <input id="pe-name" class="pe-in" type="text" placeholder="Je naam" maxlength="30" />
+  <label class="pe-lbl">Bio (optioneel)</label>
+  <input id="pe-bio" class="pe-in" type="text" placeholder="bv. PPL · focus op bench" maxlength="80" />
+  <label for="pe-public" style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surf2);border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin:12px 0 2px;cursor:pointer;">
+    <span><span style="font-size:14px;font-weight:600;">Openbaar profiel</span><br><span style="font-size:12px;color:var(--txt3);">vrienden kunnen je stats &amp; records zien</span></span>
+    <input type="checkbox" id="pe-public" style="width:20px;height:20px;flex:0 0 auto;accent-color:var(--acc);" />
+  </label>
   <div class="pe-lbl">Kleur (als je geen foto kiest)</div>
   <div id="pe-colors" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:2px;"></div>
   <div class="set-sect" style="margin:14px 0 2px;">Lichaamsmaten</div>
@@ -1196,7 +1223,7 @@ let state={
   rules:{},records:{},
   profile:{goal:'hypertrophy',exp:'intermediate',days:4,split:'ppl',
     dur:60, prio:[], prioSub:[], avoid:[], injury:'', unit:'kg', munit:'cm', weekstart:'mon',
-    theme:'blue', lang:'nl', celeb:'on', mode:'dark', avatar:'', color:'#3B82F6', weight:'', height:'', bodyfat:'', chest:'', waist:'', arms:'', thighs:''},
+    theme:'blue', lang:'nl', celeb:'on', mode:'dark', bio:'', isPublic:true, avatar:'', color:'#3B82F6', weight:'', height:'', bodyfat:'', chest:'', waist:'', arms:'', thighs:''},
   /* eigen splitstijlen die de gebruiker toevoegt: {id,name,days:[{label,groups:[...]}]} */
   customSplits:[],
   /* per oefening een gekozen machine-type + merk: exId -> {equip, brand} */
@@ -1247,7 +1274,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_7fqaZc-MfDQ9Pe5cBdK0EA_bADuau03";
 const CLOUD_ENABLED = (typeof SUPABASE_URL==='string' && SUPABASE_URL.indexOf('http')===0 && typeof SUPABASE_ANON_KEY==='string' && SUPABASE_ANON_KEY.length>20);
 let supa=null;
 try{ if(CLOUD_ENABLED && window.supabase && window.supabase.createClient){ supa=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } }catch(e){ supa=null; }
-const APP_VERSION=2;
+const APP_VERSION=3;
 try{ if(CLOUD_ENABLED){ var _ov0=document.getElementById('authOverlay'); if(_ov0) _ov0.style.display='flex'; } }catch(e){}
 const DEFAULT_PROFILE=JSON.parse(JSON.stringify(state.profile));
 /* === jouw Hevy-data, direct ingebakken — bij eerste keer openen geladen === */
@@ -1356,7 +1383,7 @@ function go(name,updateNav=true){
   $$('.screen').forEach(s=>s.classList.remove('active'));
   $('#screen-'+name).classList.add('active'); window.scrollTo(0,0);
   // deze schermen leven onder Profiel, dus Profiel-tab blijft actief
-  const profileSub=['profile','stats','exlib','rewards','pr','challenges','history','muscleguide'];
+  const profileSub=['profile','stats','exlib','rewards','pr','challenges','history','muscleguide','search'];
   const navName = profileSub.includes(name) ? 'profile' : (name==='postdetail'||name==='friend') ? 'home' : name;
   if(updateNav)$$('.navbtn').forEach(b=>b.classList.toggle('active',b.dataset.nav===navName));
   $('#nav').style.display=name==='session'?'none':'flex';
@@ -1450,6 +1477,7 @@ function unlockMedal(id){
 
 /* HOME */
 function renderHome(){
+  { const hg=$('#home-greet'); if(hg) hg.textContent='Hallo, '+((state.profile&&state.profile.name)||'Atleet'); }
   $('#home-gym').innerHTML=`${icon('i-pin')} ${state.activeGym}`;
   $('#home-tokens').textContent=state.tokens;
   $('#streakNum').textContent=weekStreak();
@@ -1470,11 +1498,16 @@ function renderHome(){
 
 /* ===================== SOCIAL FEED (lokale demo) ===================== */
 let feedTab='vrienden';
+/* social state (gevuld vanuit Supabase) */
+let myFollowing=new Set(), myFollowers=new Set();
+const _profCache={};
 function renderFeed(){
   const wrap=$('#home-feed'); if(!wrap) return;
-  const posts = feedTab==='jij' ? state.feed.filter(p=>p.user.name==='Daan') : state.feed.filter(p=>p.user.name!=='Daan');
+  if(feedTab==='vrienden'){ renderFriendsHome(); return; }
+  // "Jij": je eigen gedeelde workouts
+  const posts = state.feed.slice();
   if(!posts.length){
-    wrap.innerHTML=`<div class="empty" style="padding:26px 14px;">${feedTab==='jij'?'Jij hebt nog niets gedeeld. Rond een workout af en deel \'m!':'Nog geen posts van vrienden.'}</div>`;
+    wrap.innerHTML=`<div class="empty" style="padding:26px 14px;">Jij hebt nog niets gedeeld. Rond een workout af en deel \'m!</div>`;
     return;
   }
   wrap.innerHTML=posts.map(p=>postHTML(p)).join('');
@@ -1575,7 +1608,7 @@ function bindFeed(){
 function addComment(id){
   const inp=$('[data-cinput="'+id+'"]'); const txt=(inp.value||'').trim(); if(!txt) return;
   const p=state.feed.find(x=>x.id===id); if(!p) return;
-  p.comments.push({user:{name:'Daan',initials:'DA',color:'#F59E0B'},text:txt}); saveState();
+  p.comments.push({user:(typeof meUser==='function'?meUser():{name:(state.profile&&state.profile.name)||'Atleet',initials:'',color:'#3B82F6'}),text:txt}); saveState();
   renderFeed();
   const reopened=$('#cmts-'+id); if(reopened) reopened.classList.add('open');
   const cnt=$('[data-cmt="'+id+'"] span'); if(cnt) cnt.textContent=p.comments.length;
@@ -1630,37 +1663,69 @@ function openPostDetail(id){
   }));
 }
 
-/* ===== profiel van een vriend (alleen als openbaar) ===== */
-function openFriendProfile(name){
-  const f=state.friends[name];
-  if(!f){ go('home'); return; }
+/* ===== profiel van een vriend (uit de cloud) ===== */
+async function openFriendProfile(id){
+  if(!id){ go('home'); return; }
+  // legacy: een naam i.p.v. uuid (bv. tik op je eigen post) -> ga naar je eigen profiel
+  if(typeof id==='string' && id.indexOf('-')===-1){ go('profile'); try{renderProfile();}catch(e){} return; }
+  if(typeof supaUser!=='undefined' && supaUser && id===supaUser.id){ go('profile'); try{renderProfile();}catch(e){} return; }
+  go('friend');
+  $('#friend-body').innerHTML='<div class="empty" style="padding:40px 14px;">Laden…</div>';
+  try{ if(typeof loadFollowing==='function') await loadFollowing(); }catch(e){}
+  let row=(typeof _profCache!=='undefined' && _profCache[id])||null;
+  try{
+    if(typeof supa!=='undefined' && supa){
+      const res=await supa.from('profiles').select('id,name,avatar,color,bio,is_public,stats').eq('id',id).maybeSingle();
+      if(res && res.data){ row=res.data; _profCache[id]=row; }
+    }
+  }catch(e){}
+  if(!row){ $('#friend-body').innerHTML='<div class="empty" style="padding:40px 14px;">Dit profiel kon niet geladen worden.</div>'; return; }
+  renderFriendBody(row);
+}
+function renderFriendBody(row){
+  const following = (typeof myFollowing!=='undefined') && myFollowing.has(row.id);
+  const s=row.stats||{};
   let body='';
-  if(!f.public){
-    body=`<div class="empty" style="padding:40px 18px;">${icon('i-lock').replace('class="ic"','class="ic" style="font-size:30px;color:var(--txt3);display:block;margin:0 auto 12px;"')}
-      <b>${f.name}</b> heeft het profiel op privé staan.<br>Je ziet hun stats pas als ze het openbaar maken.</div>`;
+  if(row.is_public===false){
+    body=`<div class="empty" style="padding:34px 18px;">${icon('i-x').replace('class="ic"','class="ic" style="font-size:28px;color:var(--txt3);display:block;margin:0 auto 10px;"')}
+      <b>${esc(row.name||'Atleet')}</b> heeft het profiel op privé staan.<br>Je ziet hun stats zodra ze het openbaar maken.</div>`;
   } else {
-    const s=f.stats;
-    const tops=(f.top||[]).map(([n,v])=>`<div class="pd-set"><span class="pd-setv" style="flex:1;">${n}</span><span class="pd-setv" style="color:var(--gold);font-weight:700;">${v}</span></div>`).join('');
+    const tops=(s.top||[]).map(t=>`<div class="pd-set"><span class="pd-setv" style="flex:1;">${esc(t[0])}</span><span class="pd-setv" style="color:var(--gold);font-weight:700;">${esc(t[1])}</span></div>`).join('')
+      || '<div style="font-size:13px;color:var(--txt3);padding:5px 2px;">Nog geen records gedeeld.</div>';
+    const last = s.last ? `<div class="sect" style="margin-top:8px;">Laatste workout</div>
+      <div class="post-card"><div class="pc-t">${icon('i-dumbbell')} ${esc(s.last.title||'Workout')}</div>
+        <div class="post-stats">
+          <div class="st"><b>${s.last.durMin||0}</b><span>min</span></div>
+          <div class="st"><b>${(s.last.volume||0).toLocaleString('nl-NL')}</b><span>kg</span></div>
+          <div class="st"><b>${s.last.prCount||0}</b><span>PR's</span></div>
+        </div></div>` : '';
     body=`<div class="pd-summary">
-        <div class="pd-s"><b>${s.workouts}</b><span>workouts</span></div>
-        <div class="pd-s"><b>${s.prs}</b><span>PR's</span></div>
-        <div class="pd-s"><b>${s.streak}</b><span>dagen streak</span></div>
-        <div class="pd-s"><b>${s.favLift}</b><span>favoriet</span></div>
+        <div class="pd-s"><b>${s.workouts||0}</b><span>workouts</span></div>
+        <div class="pd-s"><b>${s.prs||0}</b><span>PR's</span></div>
+        <div class="pd-s"><b>${s.streak||0}</b><span>weken streak</span></div>
+        <div class="pd-s"><b>${s.medals||0}</b><span>medailles</span></div>
       </div>
-      <div class="sect" style="margin-top:6px;">Beste lifts</div>
+      ${last}
+      <div class="sect" style="margin-top:8px;">Beste lifts</div>
       <div class="pd-ex">${tops}</div>`;
   }
   $('#friend-body').innerHTML=`
     <div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:18px;">
-      <div class="avatar" style="width:74px;height:74px;font-size:26px;background:${f.color};margin-bottom:10px;">${f.initials}</div>
-      <div style="font-size:20px;font-weight:700;">${f.name}</div>
-      ${f.public&&f.bio?`<div style="font-size:13px;color:var(--txt2);margin-top:3px;">${esc(f.bio)}</div>`:''}
-      <div style="font-size:12px;color:var(--txt3);margin-top:4px;">lid sinds ${f.since}</div>
-      <button class="btn sm" id="friend-follow" style="width:auto;padding:8px 22px;margin-top:12px;">${icon('i-follow')} Volg je</button>
+      ${profAvatar(row,74)}
+      <div style="font-size:20px;font-weight:700;margin-top:10px;">${esc(row.name||'Atleet')}</div>
+      ${row.bio?`<div style="font-size:13px;color:var(--txt2);margin-top:3px;">${esc(row.bio)}</div>`:''}
+      <button class="btn sm" id="friend-follow" style="width:auto;padding:8px 22px;margin-top:12px;${following?'background:transparent;border:1px solid var(--line2);color:var(--txt2);':''}">${following?'Volgend':icon('i-follow')+' Volgen'}</button>
     </div>
     ${body}`;
-  go('friend');
-  const fb=$('#friend-follow'); if(fb) fb.addEventListener('click',()=>toast('Volgen werkt in de echte app','i-follow',true));
+  const fb=$('#friend-follow');
+  if(fb) fb.addEventListener('click',async()=>{
+    const now=(typeof myFollowing!=='undefined') && myFollowing.has(row.id);
+    fb.disabled=true;
+    if(now){ if(typeof unfollow==='function') await unfollow(row.id); }
+    else { if(typeof follow==='function') await follow(row.id); }
+    fb.disabled=false;
+    renderFriendBody(row);
+  });
 }
 
 /* ===== historie van eigen workouts ===== */
@@ -2471,13 +2536,13 @@ $('#fin-done').addEventListener('click',()=>{
     }).filter(e=>e.sets.length);
     const durMin=Math.max(1,Math.floor((Date.now()-session.startTs)/60000));
     const nPR = state.lastSessionPRs||0;
-    state.feed.unshift({id:'me'+Date.now(),user:{name:'Daan',initials:'DA',color:'#F59E0B'},ago:'zojuist',type:'workout',
+    state.feed.unshift({id:'me'+Date.now(),user:(typeof meUser==='function'?meUser():{name:(state.profile&&state.profile.name)||'Atleet',initials:'',color:'#3B82F6'}),mine:true,ago:'zojuist',type:'workout',
       title:session.name||'Workout',durMin,prCount:nPR,volume:Math.round(vol),
       body:'',likes:0,liked:false,comments:[],exercises:exDetail});
     state.history.unshift({id:'h'+Date.now(),title:session.name||'Workout',date:'Zojuist',
       durMin,prCount:nPR,volume:Math.round(vol),exercises:exDetail});
   }catch(e){}
-  closeSheet('finishSheet');stopRest();session=null;saveState();go('home');renderHome();
+  closeSheet('finishSheet');stopRest();session=null;saveState();try{ if(typeof syncProfile==='function') syncProfile(); }catch(e){}go('home');renderHome();
 });
 
 /* STATS — pure SVG charts (no external libs) */
@@ -2923,6 +2988,7 @@ function renderProfile(){
   const p=state.profile;
   try{ var _pn=document.getElementById('prof-name'); if(_pn) _pn.textContent=p.name||'Atleet'; var _av=document.getElementById('prof-avatar'); if(_av&&typeof avatarHTML==='function') _av.innerHTML=avatarHTML(54); var _bd=document.getElementById('prof-body'); if(_bd){ var _u=p.unit||'kg',_mu=p.munit||'cm',_b=[]; if(p.weight)_b.push(p.weight+' '+_u); if(p.height)_b.push(p.height+' '+_mu); if(p.bodyfat)_b.push(p.bodyfat+'% vet'); _bd.textContent=_b.join(' · '); } }catch(e){}
   $('#prof-plan').textContent=`${GOAL_NAME[p.goal]} · ${p.days}× p/w · ${SPLIT_NAME[p.split]}`;
+  try{ if(typeof renderProfileSocial==='function') renderProfileSocial(); }catch(e){}
   $('#prof-tokens').textContent=state.tokens;
   $('#prof-medals').textContent=state.medals.filter(m=>m.got).length+'/'+state.medals.length;
   // voorkeur-samenvatting
@@ -3802,6 +3868,9 @@ async function loadCloudData(){
   applyMode(state.profile.mode||'dark');
   try{ renderHome(); }catch(e){}
   try{ go('home'); }catch(e){}
+  try{ await syncProfile(); }catch(e){}
+  try{ await loadFollowing(); }catch(e){}
+  try{ if($('#screen-home').classList.contains('active')) renderFeed(); }catch(e){}
 }
 
 function showLogin(show){ const ov=document.getElementById('authOverlay'); if(ov) ov.style.display = show ? 'flex' : 'none'; }
@@ -4027,6 +4096,7 @@ function openProfileEdit(){
   const p=state.profile; _peAvatar=p.avatar||''; _peColor=p.color||'#3B82F6';
   const v=(id,val)=>{ const e=document.getElementById(id); if(e) e.value=(val==null?'':val); };
   v('pe-name',p.name); v('pe-weight',p.weight); v('pe-height',p.height); v('pe-bodyfat',p.bodyfat);
+  v('pe-bio',p.bio); { const pub=document.getElementById('pe-public'); if(pub) pub.checked=(p.isPublic!==false); }
   v('pe-chest',p.chest); v('pe-waist',p.waist); v('pe-arms',p.arms); v('pe-thighs',p.thighs);
   document.querySelectorAll('.pe-u').forEach(e=>e.textContent=p.unit||'kg');
   document.querySelectorAll('.pe-mu').forEach(e=>e.textContent=p.munit||'cm');
@@ -4038,10 +4108,13 @@ function peSave(){
   const p=state.profile; const g=(id)=>{ const e=document.getElementById(id); return e?e.value:''; };
   const nm=(g('pe-name')||'').trim();
   p.name = nm || p.name || 'Atleet';
+  p.bio = (g('pe-bio')||'').trim();
+  { const pub=document.getElementById('pe-public'); p.isPublic = pub ? !!pub.checked : (p.isPublic!==false); }
   p.avatar=_peAvatar||''; p.color=_peColor;
   p.weight=_peNum(g('pe-weight')); p.height=_peNum(g('pe-height')); p.bodyfat=_peNum(g('pe-bodyfat'));
   p.chest=_peNum(g('pe-chest')); p.waist=_peNum(g('pe-waist')); p.arms=_peNum(g('pe-arms')); p.thighs=_peNum(g('pe-thighs'));
   if(typeof saveState==='function') saveState();
+  try{ if(typeof syncProfile==='function') syncProfile(); }catch(e){}
   try{ renderProfile(); }catch(e){} try{ renderHome(); }catch(e){}
   if(typeof closeSheet==='function') closeSheet('profileSheet');
   if(typeof toast==='function') toast('Profiel bijgewerkt','i-check',true);
@@ -4056,6 +4129,205 @@ function _peReadPhoto(file){
     }catch(e){ if(typeof toast==='function') toast('Foto laden mislukt','i-alert',true); } };
     img.onerror=()=>{ if(typeof toast==='function') toast('Foto laden mislukt','i-alert',true); }; img.src=rd.result; };
   rd.readAsDataURL(file);
+}
+
+/* ============================================================
+   SOCIAL: profielen zoeken, volgen & vrienden op home (Supabase)
+   ============================================================ */
+function socialReady(){ return !!(typeof CLOUD_ENABLED!=='undefined' && CLOUD_ENABLED && typeof supa!=='undefined' && supa && typeof supaUser!=='undefined' && supaUser); }
+function meUser(){ const p=state.profile||{}; return {name:p.name||'Atleet', initials:initialsOf(p.name), color:p.color||'#3B82F6'}; }
+
+/* avatar-blokje voor een willekeurig profiel uit de cloud */
+function profAvatar(row, size){
+  const s=size||44;
+  if(row && row.avatar){ return '<div class="avatar" style="width:'+s+'px;height:'+s+'px;overflow:hidden;background:#000;"><img src="'+row.avatar+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"/></div>'; }
+  const col=(row&&row.color)||'#64748B';
+  return '<div class="avatar" style="width:'+s+'px;height:'+s+'px;background:'+col+';font-size:'+Math.round(s*0.38)+'px;">'+initialsOf(row&&row.name)+'</div>';
+}
+
+/* bouw een openbare momentopname van je stats uit je eigen state */
+function buildPublicStats(){
+  try{
+    const pref=state.activeGym+'|';
+    const recs=Object.keys(state.records||{})
+      .filter(k=>k.indexOf(pref)===0)
+      .map(k=>state.records[k])
+      .filter(r=>r && r.oneRm)
+      .sort((a,b)=>(b.oneRm||0)-(a.oneRm||0));
+    const top=recs.slice(0,3).map(r=>[r.name||'—', (r.weight?Math.round(r.weight)+' kg':(r.oneRm+' 1RM'))]);
+    const fav=recs.length?(recs[0].name||''):'';
+    const h=(state.history&&state.history[0])||null;
+    const last=h?{title:h.title||'Workout',date:h.date||'',durMin:h.durMin||0,prCount:h.prCount||0,volume:Math.round(h.volume||0)}:null;
+    return {
+      workouts:(state.history||[]).length,
+      prs:state.totalPRs||0,
+      streak:(typeof weekStreak==='function'?weekStreak():0),
+      medals:(state.medals||[]).filter(m=>m.got).length,
+      fav, top, last
+    };
+  }catch(e){ return {}; }
+}
+
+/* schrijf je openbare profiel naar de cloud (naam, avatar, bio, stats) */
+async function syncProfile(){
+  if(!socialReady()) return;
+  const p=state.profile||{};
+  try{
+    await supa.from('profiles').upsert({
+      id:supaUser.id,
+      name:p.name||'Atleet',
+      avatar:p.avatar||'',
+      color:p.color||'#3B82F6',
+      bio:p.bio||'',
+      is_public:(p.isPublic!==false),
+      stats:buildPublicStats(),
+      updated_at:new Date().toISOString()
+    }, { onConflict:'id' });
+  }catch(e){}
+}
+
+/* laad wie ik volg + wie mij volgt */
+async function loadFollowing(){
+  if(!socialReady()){ myFollowing=new Set(); myFollowers=new Set(); return; }
+  try{
+    const a=await supa.from('follows').select('followee').eq('follower',supaUser.id);
+    myFollowing=new Set(((a&&a.data)||[]).map(r=>r.followee));
+    const b=await supa.from('follows').select('follower').eq('followee',supaUser.id);
+    myFollowers=new Set(((b&&b.data)||[]).map(r=>r.follower));
+  }catch(e){}
+}
+
+async function follow(id){
+  if(!socialReady()||!id||id===supaUser.id) return;
+  myFollowing.add(id);
+  try{ await supa.from('follows').insert({follower:supaUser.id, followee:id}); }
+  catch(e){ /* mogelijk al gevolgd */ }
+}
+async function unfollow(id){
+  if(!socialReady()||!id) return;
+  myFollowing.delete(id);
+  try{ await supa.from('follows').delete().eq('follower',supaUser.id).eq('followee',id); }catch(e){}
+}
+
+/* tellingen op de profielpagina */
+async function renderProfileSocial(){
+  const sub=$('#friends-sub'); if(!sub) return;
+  if(!socialReady()){ sub.textContent='zoek mensen op naam en volg ze'; return; }
+  await loadFollowing();
+  sub.textContent=myFollowing.size+' volgend · '+myFollowers.size+' volgers';
+}
+
+/* ---------- MENSEN ZOEKEN ---------- */
+let _peopleTab='search', _searchTO=null;
+function openSearch(){
+  go('search'); _peopleTab='search'; updatePeopleTabs();
+  const inp=$('#people-search'); if(inp){ inp.value=''; setTimeout(()=>{ try{inp.focus();}catch(e){} },120); }
+  renderSearch();
+}
+function updatePeopleTabs(){ $$('#peopleTabs .feed-tab').forEach(t=>t.classList.toggle('on',t.dataset.ptab===_peopleTab)); }
+async function renderSearch(){
+  await loadFollowing();
+  if(_peopleTab==='search'){ doPeopleSearch($('#people-search')?$('#people-search').value:''); }
+  else { renderPeopleList(_peopleTab); }
+}
+async function doPeopleSearch(q){
+  const list=$('#people-list'); if(!list) return;
+  q=(q||'').trim();
+  if(!socialReady()){ list.innerHTML='<div class="empty" style="padding:24px 14px;">Log in om mensen te kunnen zoeken.</div>'; return; }
+  if(q.length<2){ list.innerHTML='<div class="empty" style="padding:24px 14px;">Typ minstens 2 letters van een naam.</div>'; return; }
+  list.innerHTML='<div class="empty" style="padding:20px 14px;">Zoeken…</div>';
+  try{
+    const res=await supa.from('profiles').select('id,name,avatar,color,bio').ilike('name','%'+q+'%').limit(30);
+    let rows=((res&&res.data)||[]).filter(r=>r.id!==supaUser.id);
+    rows.forEach(r=>_profCache[r.id]=r);
+    if(!rows.length){ list.innerHTML='<div class="empty" style="padding:24px 14px;">Niemand gevonden met &ldquo;'+esc(q)+'&rdquo;.</div>'; return; }
+    list.innerHTML=rows.map(personRow).join('');
+    bindPeople(list);
+  }catch(e){ list.innerHTML='<div class="empty" style="padding:24px 14px;">Zoeken lukt nu niet.</div>'; }
+}
+async function renderPeopleList(which){
+  const list=$('#people-list'); if(!list) return;
+  if(!socialReady()){ list.innerHTML='<div class="empty" style="padding:24px 14px;">Log in om dit te zien.</div>'; return; }
+  const ids=[...(which==='followers'?myFollowers:myFollowing)];
+  if(!ids.length){ list.innerHTML='<div class="empty" style="padding:24px 14px;">'+(which==='followers'?'Nog niemand volgt jou.':'Je volgt nog niemand. Zoek hierboven op naam.')+'</div>'; return; }
+  list.innerHTML='<div class="empty" style="padding:20px 14px;">Laden…</div>';
+  try{
+    const res=await supa.from('profiles').select('id,name,avatar,color,bio').in('id',ids);
+    let rows=((res&&res.data)||[]);
+    rows.forEach(r=>_profCache[r.id]=r);
+    list.innerHTML=rows.map(personRow).join('');
+    bindPeople(list);
+  }catch(e){ list.innerHTML='<div class="empty" style="padding:24px 14px;">Laden lukt nu niet.</div>'; }
+}
+function _followBtnStyle(on){ return 'width:auto;padding:7px 14px;'+(on?'background:transparent;border:1px solid var(--line2);color:var(--txt2);':''); }
+function personRow(r){
+  const f=myFollowing.has(r.id);
+  return '<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:9px;">'
+    +'<div class="tap" data-openprof="'+r.id+'" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">'
+    +profAvatar(r,44)
+    +'<div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:600;">'+esc(r.name||'Atleet')+'</div>'
+    +(r.bio?'<div style="font-size:12px;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(r.bio)+'</div>':'')
+    +'</div></div>'
+    +'<button class="btn sm" data-follow="'+r.id+'" style="'+_followBtnStyle(f)+'">'+(f?'Volgend':icon('i-follow')+' Volg')+'</button>'
+    +'</div>';
+}
+function bindPeople(scope){
+  $$('[data-follow]',scope).forEach(b=>b.addEventListener('click',async(e)=>{
+    e.stopPropagation();
+    const id=b.dataset.follow; const now=myFollowing.has(id);
+    b.disabled=true;
+    if(now){ await unfollow(id); } else { await follow(id); }
+    b.disabled=false;
+    const f=myFollowing.has(id);
+    b.innerHTML=f?'Volgend':icon('i-follow')+' Volg';
+    b.setAttribute('style', _followBtnStyle(f));
+    try{ renderProfileSocial(); }catch(_){}
+  }));
+  $$('[data-openprof]',scope).forEach(el=>el.addEventListener('click',()=>openFriendProfile(el.dataset.openprof)));
+}
+
+/* ---------- VRIENDEN OP HOME ---------- */
+async function renderFriendsHome(){
+  const wrap=$('#home-feed'); if(!wrap) return;
+  if(!socialReady()){ wrap.innerHTML='<div class="empty" style="padding:24px 14px;">Log in om je vrienden te zien.</div>'; return; }
+  wrap.innerHTML='<div class="empty" style="padding:20px 14px;">Vrienden laden…</div>';
+  await loadFollowing();
+  const ids=[...myFollowing];
+  if(!ids.length){
+    wrap.innerHTML='<div class="empty" style="padding:22px 14px;">Je volgt nog niemand.<br><button class="btn sm" id="feed-find" style="width:auto;padding:8px 16px;margin-top:12px;">'+icon('i-follow')+' Mensen zoeken</button></div>';
+    const fb=$('#feed-find'); if(fb) fb.addEventListener('click',openSearch); return;
+  }
+  let rows=[];
+  try{ const res=await supa.from('profiles').select('id,name,avatar,color,bio,is_public,stats').in('id',ids); rows=((res&&res.data)||[]); }catch(e){}
+  rows.forEach(r=>_profCache[r.id]=r);
+  rows.sort((a,b)=>((b.stats&&b.stats.last)?1:0)-((a.stats&&a.stats.last)?1:0));
+  wrap.innerHTML = rows.length ? rows.map(friendCard).join('') : '<div class="empty" style="padding:22px 14px;">Je vrienden hebben nog niets gedeeld.</div>';
+  $$('[data-openprof]',wrap).forEach(el=>el.addEventListener('click',()=>openFriendProfile(el.dataset.openprof)));
+}
+function friendCard(r){
+  const s=r.stats||{};
+  const priv=r.is_public===false;
+  let inner, meta;
+  if(priv){ inner=''; meta='privé profiel — tik om te volgen'; }
+  else if(s.last){
+    meta='laatste workout';
+    inner='<div class="post-card"><div class="pc-t">'+icon('i-dumbbell')+' '+esc(s.last.title||'Workout')+'</div>'
+      +'<div class="post-stats">'
+      +'<div class="st"><b>'+(s.last.durMin||0)+'</b><span>min</span></div>'
+      +'<div class="st"><b>'+(s.last.volume||0).toLocaleString('nl-NL')+'</b><span>kg</span></div>'
+      +'<div class="st"><b>'+(s.last.prCount||0)+'</b><span>PR\'s</span></div></div></div>';
+  } else {
+    meta='tik voor profiel';
+    inner='<div class="post-card"><div class="post-stats">'
+      +'<div class="st"><b>'+(s.workouts||0)+'</b><span>workouts</span></div>'
+      +'<div class="st"><b>'+(s.streak||0)+'</b><span>wk streak</span></div>'
+      +'<div class="st"><b>'+(s.prs||0)+'</b><span>PR\'s</span></div></div></div>';
+  }
+  return '<div class="post tap" data-openprof="'+r.id+'">'
+    +'<div class="post-head">'+profAvatar(r,42)
+    +'<div class="post-who"><div class="post-name">'+esc(r.name||'Atleet')+'</div>'
+    +'<div class="post-meta">'+meta+'</div></div></div>'
+    +inner+'</div>';
 }
 
 /* ============================================================
@@ -4091,6 +4363,11 @@ async function checkForUpdate(){
 /* wire profiel-bewerken + update-check */
 (function(){
   const card=document.getElementById('profileEditCard'); if(card) card.addEventListener('click', openProfileEdit);
+  const fc=document.getElementById('friendsCard'); if(fc) fc.addEventListener('click', openSearch);
+  const psr=document.getElementById('people-search');
+  if(psr) psr.addEventListener('input',()=>{ if(_searchTO) clearTimeout(_searchTO); _searchTO=setTimeout(()=>{ _peopleTab='search'; updatePeopleTabs(); doPeopleSearch(psr.value); }, 280); });
+  const ptabs=document.getElementById('peopleTabs');
+  if(ptabs) ptabs.addEventListener('click',e=>{ const t=e.target.closest('[data-ptab]'); if(!t) return; _peopleTab=t.dataset.ptab; updatePeopleTabs(); renderSearch(); });
   const ps=document.getElementById('pe-save'); if(ps) ps.addEventListener('click', peSave);
   const pc=document.getElementById('pe-cancel'); if(pc) pc.addEventListener('click',()=>{ if(typeof closeSheet==='function') closeSheet('profileSheet'); });
   const pp=document.getElementById('pe-photo'), pf=document.getElementById('pe-photo-file');
