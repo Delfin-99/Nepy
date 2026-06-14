@@ -632,10 +632,7 @@
       </div>
     </div>
 
-    <div class="sect">Snel starten <button class="link" data-nav="library">beheren ›</button></div>
-    <div id="home-workouts"></div>
-
-    <div class="sect" style="margin-top:22px;">Van je vrienden <button class="link" id="feedRefresh">vernieuwen ›</button></div>
+    <div class="sect">Van je vrienden <button class="link" id="feedRefresh">vernieuwen ›</button></div>
     <div class="feed-tabs" id="feedTabs">
       <div class="feed-tab on" data-feed="vrienden">Activiteit</div>
       <div class="feed-tab" data-feed="workouts">Gedeelde workouts</div>
@@ -1329,7 +1326,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_7fqaZc-MfDQ9Pe5cBdK0EA_bADuau03";
 const CLOUD_ENABLED = (typeof SUPABASE_URL==='string' && SUPABASE_URL.indexOf('http')===0 && typeof SUPABASE_ANON_KEY==='string' && SUPABASE_ANON_KEY.length>20);
 let supa=null;
 try{ if(CLOUD_ENABLED && window.supabase && window.supabase.createClient){ supa=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } }catch(e){ supa=null; }
-const APP_VERSION=7;
+const APP_VERSION=8;
 try{ if(CLOUD_ENABLED){ var _ov0=document.getElementById('authOverlay'); if(_ov0) _ov0.style.display='flex'; } }catch(e){}
 const DEFAULT_PROFILE=JSON.parse(JSON.stringify(state.profile));
 /* === jouw Hevy-data, direct ingebakken — bij eerste keer openen geladen === */
@@ -1550,13 +1547,6 @@ function renderHome(){
   const mc=$('#home-medalcount'); if(mc) mc.textContent=state.medals.filter(m=>m.got).length;
   const L=['M','D','W','D','V','Z','Z'];
   $('#streakRow').innerHTML=state.weekPattern.map((on,i)=>`<div class="day ${on?'on':''} ${i===state.todayIdx?'today':''}">${L[i]}</div>`).join('');
-  $('#home-workouts').innerHTML=state.workouts.map(w=>{
-    return `<div class="card tap wkrow" data-start="${w.id}">
-      <div class="thumb">${icon(exMeta(w.exercises[0]).icon)}</div>
-      <div style="flex:1;"><div class="nm">${w.name}</div><div class="meta">${w.exercises.length} oefeningen · ~${w.exercises.length*9+8} min</div></div>
-      <div class="playbtn">${icon('i-play')}</div></div>`;
-  }).join('');
-  $$('[data-start]',$('#home-workouts')).forEach(el=>el.addEventListener('click',()=>startSession(el.dataset.start)));
   renderFeed();
 }
 
@@ -2622,7 +2612,7 @@ function saveGeneratedTemplate(){
   const name=groups.slice(0,3).join('/')+(groups.length>3?'+':'');
   state.workouts.push({id:'gen'+Date.now(), name:name||'Gegenereerd', exercises:plan.map(p=>p.exId)});
   saveState(); closeSheet('genSheet'); renderHome(); if($('#screen-library')) renderLibrary();
-  toast('Opgeslagen bij Snel starten','i-check',true);
+  toast('Opgeslagen bij je workouts','i-check',true);
 }
 (function wireGen(){
   const g=$('#gen-go'); if(g) g.addEventListener('click',doGenerate);
@@ -3000,7 +2990,7 @@ $('#fin-done').addEventListener('click',()=>{
     state.feed.unshift({id:'me'+Date.now(),user:(typeof meUser==='function'?meUser():{name:(state.profile&&state.profile.name)||'Atleet',initials:'',color:'#3B82F6'}),mine:true,ago:'zojuist',type:'workout',
       title:session.name||'Workout',durMin,prCount:nPR,volume:Math.round(vol),
       body:'',likes:0,liked:false,comments:[],exercises:exDetail});
-    state.history.unshift({id:'h'+Date.now(),title:session.name||'Workout',date:'Zojuist',
+    state.history.unshift({id:'h'+Date.now(),title:session.name||'Workout',date:'Zojuist',gym:state.activeGym,
       durMin,prCount:nPR,volume:Math.round(vol),exercises:exDetail});
   }catch(e){}
   closeSheet('finishSheet');stopRest();try{ if(typeof checkChallengesOnFinish==='function') checkChallengesOnFinish(session.exercises); }catch(e){}session=null;saveState();try{ if(typeof syncProfile==='function') syncProfile(); }catch(e){}go('home');renderHome();
@@ -4627,7 +4617,16 @@ function buildPublicStats(){
     const top=recs.slice(0,3).map(r=>[r.name||'—', (r.weight?Math.round(r.weight)+' kg':(r.oneRm+' 1RM'))]);
     const fav=recs.length?(recs[0].name||''):'';
     const h=(state.history&&state.history[0])||null;
-    const last=h?{title:h.title||'Workout',date:h.date||'',durMin:h.durMin||0,prCount:h.prCount||0,volume:Math.round(h.volume||0)}:null;
+    let lastEx=[];
+    if(h && Array.isArray(h.exercises)){
+      lastEx=h.exercises.slice(0,14).map(e=>{
+        const sets=e.sets||[];
+        const vol=sets.reduce((a,s)=>a+((s[0]||0)*(s[1]||0)),0);
+        const topW=sets.reduce((a,s)=>Math.max(a,(s[0]||0)),0);
+        return {name:e.name||'Oefening', sets:sets.length, vol:Math.round(vol), top:Math.round(topW)};
+      });
+    }
+    const last=h?{title:h.title||'Workout',date:h.date||'',durMin:h.durMin||0,prCount:h.prCount||0,volume:Math.round(h.volume||0),gym:h.gym||'',ex:lastEx}:null;
     const medalsGot=(state.medals||[]).filter(m=>m.got);
     return {
       workouts:(state.history||[]).length,
@@ -4785,26 +4784,44 @@ async function renderFriendsHome(){
 function friendCard(r){
   const s=r.stats||{};
   const priv=r.is_public===false;
-  let inner, meta;
-  if(priv){ inner=''; meta='privé profiel — tik om te volgen'; }
-  else if(s.last){
-    meta='laatste workout';
-    inner='<div class="post-card"><div class="pc-t">'+icon('i-dumbbell')+' '+esc(s.last.title||'Workout')+'</div>'
-      +'<div class="post-stats">'
-      +'<div class="st"><b>'+(s.last.durMin||0)+'</b><span>min</span></div>'
-      +'<div class="st"><b>'+(s.last.volume||0).toLocaleString('nl-NL')+'</b><span>kg</span></div>'
-      +'<div class="st"><b>'+(s.last.prCount||0)+'</b><span>PR\'s</span></div></div></div>';
-  } else {
-    meta='tik voor profiel';
-    inner='<div class="post-card"><div class="post-stats">'
+  if(priv || !s.last){
+    const meta = priv ? 'privé profiel — tik om te volgen' : 'tik voor profiel';
+    const inner = priv ? '' : '<div class="post-card"><div class="post-stats">'
       +'<div class="st"><b>'+(s.workouts||0)+'</b><span>workouts</span></div>'
       +'<div class="st"><b>'+(s.streak||0)+'</b><span>wk streak</span></div>'
       +'<div class="st"><b>'+(s.prs||0)+'</b><span>PR\'s</span></div></div></div>';
+    return '<div class="post tap" data-openprof="'+r.id+'">'
+      +'<div class="post-head">'+profAvatar(r,42)
+      +'<div class="post-who"><div class="post-name">'+esc(r.name||'Atleet')+'</div>'
+      +'<div class="post-meta">'+meta+'</div></div></div>'+inner+'</div>';
   }
-  return '<div class="post tap" data-openprof="'+r.id+'">'
+  const L=s.last;
+  const exCount=(L.ex||[]).length;
+  const gym = L.gym ? '<div style="font-size:12px;color:var(--txt3);margin-top:3px;display:flex;align-items:center;gap:4px;">'+icon('i-pin').replace('class="ic"','class="ic" style="font-size:12px;color:var(--txt3);"')+esc(L.gym)+'</div>' : '';
+  const prBadge = L.prCount ? '<span style="flex:0 0 auto;font-size:11px;font-weight:700;color:var(--gold);background:var(--gold-dim);border:1px solid var(--goldline);border-radius:6px;padding:2px 7px;">'+L.prCount+' PR'+(L.prCount!==1?'\'s':'')+'</span>' : '';
+  const exRows=(L.ex||[]).map((e,i)=>{
+    const sub=[]; if(e.sets) sub.push(e.sets+'×'); if(e.vol) sub.push(e.vol.toLocaleString('nl-NL')+' kg');
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;'+(i?'border-top:1px solid var(--line);':'')+'">'
+      +'<span style="font-size:13px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(e.name)+'</span>'
+      +'<span style="font-size:12px;color:var(--txt3);flex:0 0 auto;">'+sub.join(' · ')+'</span></div>';
+  }).join('');
+  const inner=
+    '<div class="post-card" style="padding:0;overflow:hidden;">'
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:12px 13px 10px;">'
+        +'<div style="min-width:0;"><div style="font-size:14px;font-weight:700;display:flex;align-items:center;gap:7px;">'+icon('i-dumbbell').replace('class="ic"','class="ic" style="font-size:16px;color:var(--acc2);flex:0 0 auto;"')+'<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(L.title||'Workout')+'</span></div>'+gym+'</div>'
+        +prBadge
+      +'</div>'
+      +'<div class="post-stats" style="margin-top:0;padding:0 13px 11px;border-bottom:1px solid var(--line);">'
+        +'<div class="st"><b>'+(L.durMin||0)+'</b><span>min</span></div>'
+        +'<div class="st"><b>'+(L.volume||0).toLocaleString('nl-NL')+'</b><span>kg volume</span></div>'
+        +'<div class="st"><b>'+exCount+'</b><span>oefeningen</span></div>'
+      +'</div>'
+      +(exRows?'<div style="padding:3px 13px 11px;">'+exRows+'</div>':'')
+    +'</div>';
+  return '<div class="post tap" data-openprof="'+r.id+'" style="padding-bottom:13px;">'
     +'<div class="post-head">'+profAvatar(r,42)
     +'<div class="post-who"><div class="post-name">'+esc(r.name||'Atleet')+'</div>'
-    +'<div class="post-meta">'+meta+'</div></div></div>'
+    +'<div class="post-meta">voltooide een workout</div></div></div>'
     +inner+'</div>';
 }
 
