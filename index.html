@@ -371,6 +371,7 @@
   .sheetbg.show{opacity:1;pointer-events:auto;}
   #splitSheet,#scienceSheet{z-index:75;}
   #gearSheet{z-index:80;}
+  #exPickSheet{z-index:85;}
   .sheet{width:100%;max-width:440px;background:var(--surf);border-radius:var(--r-lg) var(--r-lg) 0 0;
     border-top:1px solid var(--line2);padding:8px 18px calc(22px + env(safe-area-inset-bottom));
     transform:translateY(100%);transition:transform .26s cubic-bezier(.2,.8,.3,1);max-height:90vh;overflow-y:auto;}
@@ -1328,7 +1329,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_7fqaZc-MfDQ9Pe5cBdK0EA_bADuau03";
 const CLOUD_ENABLED = (typeof SUPABASE_URL==='string' && SUPABASE_URL.indexOf('http')===0 && typeof SUPABASE_ANON_KEY==='string' && SUPABASE_ANON_KEY.length>20);
 let supa=null;
 try{ if(CLOUD_ENABLED && window.supabase && window.supabase.createClient){ supa=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } }catch(e){ supa=null; }
-const APP_VERSION=6;
+const APP_VERSION=7;
 try{ if(CLOUD_ENABLED){ var _ov0=document.getElementById('authOverlay'); if(_ov0) _ov0.style.display='flex'; } }catch(e){}
 const DEFAULT_PROFILE=JSON.parse(JSON.stringify(state.profile));
 /* === jouw Hevy-data, direct ingebakken — bij eerste keer openen geladen === */
