@@ -920,10 +920,12 @@
 <div class="sheetbg" id="notesSheet"><div class="sheet"><div class="grab"></div>
   <div style="font-size:19px;font-weight:700;margin-bottom:4px;">Notities voor verbeteringen</div>
   <p style="font-size:13px;color:var(--txt2);margin:0 0 14px;">Schrijf ideeën op terwijl je de app gebruikt. Later kopieer je alles in één keer in een prompt.</p>
+  <div id="note-admin-tag"></div>
   <textarea class="note-ta" id="note-input" placeholder="Bijv: maak het rust-geluid uitzetbaar, of voeg een nog donkerder thema toe…"></textarea>
   <button class="btn" id="note-add" style="width:100%;margin-bottom:16px;">Notitie toevoegen</button>
   <div id="note-list"></div>
   <button class="btn" id="note-copy" style="width:100%;background:transparent;border:1px solid var(--line2);color:var(--txt2);margin-top:4px;">Alles kopiëren</button>
+  <button class="btn" id="note-clear" style="display:none;width:100%;background:transparent;border:1px solid var(--line2);color:#ef4444;margin-top:8px;"><svg class="ic"><use href="#i-trash"/></svg> Alles verwijderen</button>
 </div></div>
 
 <div class="sheetbg" id="gymSheet"><div class="sheet"><div class="grab"></div>
@@ -1274,7 +1276,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_7fqaZc-MfDQ9Pe5cBdK0EA_bADuau03";
 const CLOUD_ENABLED = (typeof SUPABASE_URL==='string' && SUPABASE_URL.indexOf('http')===0 && typeof SUPABASE_ANON_KEY==='string' && SUPABASE_ANON_KEY.length>20);
 let supa=null;
 try{ if(CLOUD_ENABLED && window.supabase && window.supabase.createClient){ supa=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } }catch(e){ supa=null; }
-const APP_VERSION=3;
+const APP_VERSION=4;
 try{ if(CLOUD_ENABLED){ var _ov0=document.getElementById('authOverlay'); if(_ov0) _ov0.style.display='flex'; } }catch(e){}
 const DEFAULT_PROFILE=JSON.parse(JSON.stringify(state.profile));
 /* === jouw Hevy-data, direct ingebakken — bij eerste keer openen geladen === */
@@ -1558,28 +1560,85 @@ function postHTML(p){
   </div>`;
 }
 function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-/* ===== notities voor verbeteringen ===== */
-function openNotes(){ renderNoteList(); openSheet('notesSheet'); }
+/* ===== notities voor verbeteringen (gedeeld via de cloud) ===== */
+const NOTES_ADMIN='delfinmarijn@gmail.com';
+let _notesCache=[];
+function isNotesAdmin(){ return socialReady() && ((supaUser.email||'').toLowerCase()===NOTES_ADMIN); }
+function _noteDate(iso){ try{ const d=new Date(iso); return d.toLocaleDateString('nl-NL',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+async function openNotes(){ openSheet('notesSheet'); await loadNotes(); }
+async function loadNotes(){
+  const list=$('#note-list'); const tag=$('#note-admin-tag');
+  if(!socialReady()){
+    if(tag) tag.innerHTML='';
+    if(list) list.innerHTML='<div class="empty" style="padding:14px;">Log in om notities op te slaan en te delen.</div>';
+    _notesCache=[]; updateNoteClearBtn(); return;
+  }
+  if(tag) tag.innerHTML = isNotesAdmin()
+    ? '<div style="font-size:12px;color:var(--gold);background:var(--gold-dim);border:1px solid var(--goldline);border-radius:8px;padding:8px 11px;margin-bottom:12px;">'+icon('i-badge')+' Beheerder — je ziet de notities van iedereen.</div>'
+    : '<div style="font-size:12px;color:var(--txt3);margin-bottom:10px;">Alleen jij ziet jouw notities. Ze gaan rechtstreeks naar de maker van de app.</div>';
+  if(list) list.innerHTML='<div class="empty" style="padding:14px;">Laden…</div>';
+  try{
+    const res=await supa.from('app_notes').select('id,user_id,author,text,created_at').order('created_at',{ascending:false});
+    if(res.error) throw res.error;
+    _notesCache=res.data||[];
+  }catch(e){
+    if(list) list.innerHTML='<div class="empty" style="padding:14px;">Laden lukt nu niet — staat de notities-tabel er al? (SQL draaien)</div>';
+    _notesCache=[]; updateNoteClearBtn(); return;
+  }
+  renderNoteList();
+}
 function renderNoteList(){
   const list=$('#note-list'); if(!list) return;
-  const notes=state.devNotes||[];
-  list.innerHTML = notes.length ? notes.map(n=>`<div class="note-item">
-    <div class="nt">${esc(n.text)}<div class="nd">${n.date||''}</div></div>
-    <button class="note-del" data-noteid="${n.id}" aria-label="Verwijderen">${icon('i-trash')}</button></div>`).join('')
-    : '<div class="empty" style="padding:14px;">Nog geen notities. Typ hierboven je eerste idee.</div>';
-  $$('[data-noteid]',list).forEach(b=>b.addEventListener('click',()=>{
-    state.devNotes=(state.devNotes||[]).filter(x=>x.id!==b.dataset.noteid); saveState(); renderNoteList(); }));
+  const admin=isNotesAdmin();
+  const notes=_notesCache;
+  if(!notes.length){ list.innerHTML='<div class="empty" style="padding:14px;">Nog geen notities. Typ hierboven je eerste idee.</div>'; updateNoteClearBtn(); return; }
+  list.innerHTML=notes.map(n=>`<div class="note-item">
+    <div class="nt">${esc(n.text)}<div class="nd">${admin&&n.author?esc(n.author)+' · ':''}${_noteDate(n.created_at)}</div></div>
+    <button class="note-del" data-noteid="${n.id}" aria-label="Verwijderen">${icon('i-trash')}</button></div>`).join('');
+  $$('[data-noteid]',list).forEach(b=>b.addEventListener('click',()=>deleteNote(b.dataset.noteid)));
+  updateNoteClearBtn();
 }
-function addNote(){
+function updateNoteClearBtn(){ const c=$('#note-clear'); if(c) c.style.display=_notesCache.length?'block':'none'; }
+async function addNote(){
   const inp=$('#note-input'); const t=(inp.value||'').trim(); if(!t) return;
-  const d=new Date();
-  const dd=d.toLocaleDateString('nl-NL',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
-  state.devNotes=state.devNotes||[]; state.devNotes.unshift({id:'n'+Date.now(),text:t,date:dd});
-  inp.value=''; saveState(); renderNoteList();
+  if(!socialReady()){ toast('Log eerst in','i-alert',true); return; }
+  const p=state.profile||{};
+  const author=(p.name||'Atleet')+' <'+(supaUser.email||'')+'>';
+  inp.value='';
+  try{
+    const res=await supa.from('app_notes').insert({user_id:supaUser.id, author, text:t});
+    if(res.error) throw res.error;
+  }catch(e){ toast('Opslaan lukt nu niet','i-alert',true); inp.value=t; return; }
+  await loadNotes();
+}
+async function deleteNote(id){
+  if(!id) return;
+  if(!confirm('Weet je het zeker? Deze notitie wordt verwijderd.')) return;
+  try{
+    const res=await supa.from('app_notes').delete().eq('id',id);
+    if(res.error) throw res.error;
+  }catch(e){ toast('Verwijderen lukt nu niet','i-alert',true); return; }
+  await loadNotes();
+}
+async function clearAllNotes(){
+  if(!_notesCache.length) return;
+  const n=_notesCache.length;
+  const msg=isNotesAdmin()
+    ? 'Let op: dit verwijdert ALLE '+n+' notities van iedereen. Dit kan niet ongedaan worden gemaakt. Doorgaan?'
+    : 'Al je '+n+' notities verwijderen? Dit kan niet ongedaan worden gemaakt.';
+  if(!confirm(msg)) return;
+  const ids=_notesCache.map(x=>x.id);
+  try{
+    const res=await supa.from('app_notes').delete().in('id',ids);
+    if(res.error) throw res.error;
+  }catch(e){ toast('Verwijderen lukt nu niet','i-alert',true); return; }
+  toast('Notities verwijderd','i-check',true);
+  await loadNotes();
 }
 function copyNotes(){
-  const notes=state.devNotes||[]; if(!notes.length){ toast('Nog geen notities','i-edit',true); return; }
-  const txt='Verbeterpunten voor mijn workout-app:\n'+notes.slice().reverse().map((n,i)=>`${i+1}. ${n.text}`).join('\n');
+  const notes=_notesCache; if(!notes.length){ toast('Nog geen notities','i-edit',true); return; }
+  const admin=isNotesAdmin();
+  const txt='Verbeterpunten voor mijn workout-app:\n'+notes.slice().reverse().map((n,i)=>`${i+1}. ${n.text}${admin&&n.author?'  ['+n.author+']':''}`).join('\n');
   const done=()=>toast('Notities gekopieerd','i-check',true);
   if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done).catch(()=>noteFallbackCopy(txt,done)); }
   else noteFallbackCopy(txt,done);
@@ -1589,6 +1648,7 @@ function noteFallbackCopy(txt,cb){ try{ const ta=document.createElement('textare
   const f=$('#notesFab'); if(f) f.addEventListener('click',openNotes);
   const a=$('#note-add'); if(a) a.addEventListener('click',addNote);
   const c=$('#note-copy'); if(c) c.addEventListener('click',copyNotes);
+  const cl=$('#note-clear'); if(cl) cl.addEventListener('click',clearAllNotes);
 })();
 function bindFeed(){
   $$('[data-like]').forEach(b=>b.addEventListener('click',()=>{
@@ -4221,6 +4281,7 @@ async function renderProfileSocial(){
 let _peopleTab='search', _searchTO=null;
 function openSearch(){
   go('search'); _peopleTab='search'; updatePeopleTabs();
+  try{ syncProfile(); }catch(e){}
   const inp=$('#people-search'); if(inp){ inp.value=''; setTimeout(()=>{ try{inp.focus();}catch(e){} },120); }
   renderSearch();
 }
@@ -4238,12 +4299,16 @@ async function doPeopleSearch(q){
   list.innerHTML='<div class="empty" style="padding:20px 14px;">Zoeken…</div>';
   try{
     const res=await supa.from('profiles').select('id,name,avatar,color,bio').ilike('name','%'+q+'%').limit(30);
+    if(res.error) throw res.error;
     let rows=((res&&res.data)||[]).filter(r=>r.id!==supaUser.id);
     rows.forEach(r=>_profCache[r.id]=r);
-    if(!rows.length){ list.innerHTML='<div class="empty" style="padding:24px 14px;">Niemand gevonden met &ldquo;'+esc(q)+'&rdquo;.</div>'; return; }
+    if(!rows.length){ list.innerHTML='<div class="empty" style="padding:24px 14px;">Niemand gevonden met &ldquo;'+esc(q)+'&rdquo;.<br><span style="font-size:12px;">De persoon verschijnt pas zodra hij de nieuwe versie één keer heeft geopend en ingelogd.</span></div>'; return; }
     list.innerHTML=rows.map(personRow).join('');
     bindPeople(list);
-  }catch(e){ list.innerHTML='<div class="empty" style="padding:24px 14px;">Zoeken lukt nu niet.</div>'; }
+  }catch(e){
+    const miss=(e&&(e.code==='42P01'||/relation|does not exist|schema cache/i.test(e.message||'')));
+    list.innerHTML='<div class="empty" style="padding:24px 14px;">'+(miss?'Database nog niet ingesteld — heb je de SQL in Supabase gedraaid?':'Zoeken lukt nu niet.')+'</div>';
+  }
 }
 async function renderPeopleList(which){
   const list=$('#people-list'); if(!list) return;
