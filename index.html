@@ -636,8 +636,8 @@
 
     <div class="sect" style="margin-top:22px;">Van je vrienden <button class="link" id="feedRefresh">vernieuwen ›</button></div>
     <div class="feed-tabs" id="feedTabs">
-      <div class="feed-tab on" data-feed="vrienden">Vrienden</div>
-      <div class="feed-tab" data-feed="jij">Jij</div>
+      <div class="feed-tab on" data-feed="vrienden">Activiteit</div>
+      <div class="feed-tab" data-feed="workouts">Gedeelde workouts</div>
     </div>
     <div id="home-feed"></div>
   </section>
@@ -964,6 +964,19 @@
     <button class="btn" id="ch-cancel" style="flex:1;background:transparent;border:1px solid var(--line2);color:var(--txt2);">Annuleren</button>
     <button class="btn" id="ch-send" style="flex:1;">Versturen</button>
   </div>
+</div></div>
+
+<div class="sheetbg" id="shareWoSheet"><div class="sheet"><div class="grab"></div>
+  <h3>Workout delen</h3>
+  <p class="ssub" id="shareWo-name">—</p>
+  <p style="font-size:13px;color:var(--txt2);margin:0 0 14px;">Gedeelde workouts verschijnen op de homepagina. Anderen kunnen ze opslaan, liken en met sterren beoordelen.</p>
+  <button class="btn" id="shareWo-friends" style="width:100%;margin-bottom:8px;"><svg class="ic"><use href="#i-follow"/></svg> Delen met vrienden</button>
+  <button class="btn" id="shareWo-public" style="width:100%;margin-bottom:8px;"><svg class="ic"><use href="#i-feed"/></svg> Delen met iedereen</button>
+  <button class="btn" id="shareWo-none" style="width:100%;background:transparent;border:1px solid var(--line2);color:#ef4444;"><svg class="ic"><use href="#i-x"/></svg> Niet meer delen</button>
+</div></div>
+
+<div class="sheetbg" id="swSheet"><div class="sheet"><div class="grab"></div>
+  <div id="sw-body"></div>
 </div></div>
 
 <div class="sheetbg" id="gymSheet"><div class="sheet"><div class="grab"></div>
@@ -1315,7 +1328,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_7fqaZc-MfDQ9Pe5cBdK0EA_bADuau03";
 const CLOUD_ENABLED = (typeof SUPABASE_URL==='string' && SUPABASE_URL.indexOf('http')===0 && typeof SUPABASE_ANON_KEY==='string' && SUPABASE_ANON_KEY.length>20);
 let supa=null;
 try{ if(CLOUD_ENABLED && window.supabase && window.supabase.createClient){ supa=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } }catch(e){ supa=null; }
-const APP_VERSION=5;
+const APP_VERSION=6;
 try{ if(CLOUD_ENABLED){ var _ov0=document.getElementById('authOverlay'); if(_ov0) _ov0.style.display='flex'; } }catch(e){}
 const DEFAULT_PROFILE=JSON.parse(JSON.stringify(state.profile));
 /* === jouw Hevy-data, direct ingebakken — bij eerste keer openen geladen === */
@@ -1553,15 +1566,8 @@ let myFollowing=new Set(), myFollowers=new Set();
 const _profCache={};
 function renderFeed(){
   const wrap=$('#home-feed'); if(!wrap) return;
-  if(feedTab==='vrienden'){ renderFriendsHome(); return; }
-  // "Jij": je eigen gedeelde workouts
-  const posts = state.feed.slice();
-  if(!posts.length){
-    wrap.innerHTML=`<div class="empty" style="padding:26px 14px;">Jij hebt nog niets gedeeld. Rond een workout af en deel \'m!</div>`;
-    return;
-  }
-  wrap.innerHTML=posts.map(p=>postHTML(p)).join('');
-  bindFeed();
+  if(feedTab==='workouts'){ renderSharedFeed(); return; }
+  renderFriendsHome();
 }
 function postHTML(p){
   let card='';
@@ -2135,16 +2141,192 @@ function awardTrophy(c){
   const cs=$('#ch-send'); if(cs) cs.addEventListener('click',createChallenge);
 })();
 
+/* ============================================================
+   GEDEELDE WORKOUTS: delen, ontdekken, sterren & reacties
+   ============================================================ */
+const _swCache={}; let _swReviewStars=0, _shareWoId=null;
+
+async function loadMyShared(){
+  _myShared={};
+  if(!socialReady()) return;
+  try{
+    const res=await supa.from('shared_workouts').select('*').eq('owner',supaUser.id);
+    (res.data||[]).forEach(r=>{ if(r.local_id) _myShared[r.local_id]=r; });
+  }catch(e){}
+}
+function openShareWorkout(localId){
+  if(!socialReady()){ toast('Log eerst in','i-alert',true); return; }
+  const w=state.workouts.find(x=>x.id===localId); if(!w) return;
+  _shareWoId=localId;
+  const nm=$('#shareWo-name'); if(nm) nm.textContent=w.name||'Workout';
+  openSheet('shareWoSheet');
+}
+async function setWorkoutVisibility(localId, vis){
+  const w=state.workouts.find(x=>x.id===localId); if(!w) return;
+  if(!socialReady()){ toast('Log eerst in','i-alert',true); return; }
+  closeSheet('shareWoSheet');
+  if(vis===null){
+    try{ await supa.from('shared_workouts').delete().eq('owner',supaUser.id).eq('local_id',localId); }catch(e){}
+    delete _myShared[localId];
+    toast('Niet meer gedeeld','i-check',true);
+  } else {
+    const exercises=(w.exercises||[]).map(e=>({id:e, name:(exMeta(e)&&exMeta(e).name)||e}));
+    const meName=(state.profile&&state.profile.name)||'Atleet';
+    try{
+      const res=await supa.from('shared_workouts').upsert({
+        owner:supaUser.id, owner_name:meName, owner_color:(state.profile&&state.profile.color)||'#3B82F6',
+        local_id:localId, name:w.name||'Workout', exercises, visibility:vis, updated_at:new Date().toISOString()
+      }, { onConflict:'owner,local_id' }).select();
+      if(res.error) throw res.error;
+      if(res.data&&res.data[0]) _myShared[localId]=res.data[0];
+    }catch(e){ toast('Delen lukt nu niet','i-alert',true); return; }
+    toast(vis==='public'?'Gedeeld met iedereen':'Gedeeld met vrienden','i-check',true);
+  }
+  try{ renderLibrary(); }catch(e){}
+}
+(function wireShareWo(){
+  const f=$('#shareWo-friends'); if(f) f.addEventListener('click',()=>setWorkoutVisibility(_shareWoId,'friends'));
+  const p=$('#shareWo-public'); if(p) p.addEventListener('click',()=>setWorkoutVisibility(_shareWoId,'public'));
+  const n=$('#shareWo-none'); if(n) n.addEventListener('click',()=>setWorkoutVisibility(_shareWoId,null));
+})();
+
+function swAvg(w){ return w.rating_count?(w.rating_sum/w.rating_count):0; }
+function starStr(w){
+  const avg=swAvg(w), full=Math.round(avg); let s='';
+  for(let i=1;i<=5;i++) s+= i<=full?'★':'☆';
+  return `<span style="color:var(--gold);letter-spacing:1px;">${s}</span> <span style="font-size:11px;color:var(--txt3);">${avg?avg.toFixed(1):'–'} (${w.rating_count||0})</span>`;
+}
+function swCard(w){
+  const exn=(w.exercises||[]).length;
+  return `<div class="post tap" data-sw="${w.id}">
+    <div class="post-head">${profAvatar(_profCache[w.owner]||{name:w.owner_name,color:w.owner_color},42)}
+      <div class="post-who"><div class="post-name">${esc(w.name||'Workout')}</div>
+        <div class="post-meta">van ${esc(w.owner_name||'iemand')} · ${exn} oefeningen</div></div></div>
+    <div class="post-card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <div>${starStr(w)}</div>
+      <div style="font-size:12px;color:var(--txt3);">${icon('i-heart').replace('class="ic"','class="ic" style="font-size:13px;vertical-align:-2px;color:#EC4899;"')} ${w.likes||0}</div>
+    </div></div></div>`;
+}
+async function renderSharedFeed(){
+  const wrap=$('#home-feed'); if(!wrap) return;
+  if(!socialReady()){ wrap.innerHTML='<div class="empty" style="padding:24px 14px;">Log in om gedeelde workouts te zien.</div>'; return; }
+  wrap.innerHTML='<div class="empty" style="padding:20px 14px;">Laden…</div>';
+  await loadFollowing();
+  const ids=[...myFollowing];
+  let friendsW=[];
+  try{ if(ids.length){ const res=await supa.from('shared_workouts').select('*').in('owner',ids).order('created_at',{ascending:false}); friendsW=res.data||[]; } }catch(e){}
+  let suggested=[];
+  try{ const res=await supa.from('shared_workouts').select('*').eq('visibility','public').order('likes',{ascending:false}).order('rating_count',{ascending:false}).limit(20);
+    suggested=(res.data||[]).filter(w=>w.owner!==supaUser.id && ids.indexOf(w.owner)===-1);
+  }catch(e){}
+  [...friendsW,...suggested].forEach(w=>_swCache[w.id]=w);
+  let html='<div class="sect">Van vrienden</div>';
+  html+= friendsW.length ? friendsW.map(swCard).join('') : '<div class="empty" style="padding:16px 14px;">Je vrienden hebben nog geen workouts gedeeld. Deel zelf een workout via het tabblad Workouts.</div>';
+  if(suggested.length){ html+='<div class="sect" style="margin-top:12px;">Voorgesteld voor jou</div>'+suggested.map(swCard).join(''); }
+  wrap.innerHTML=html;
+  $$('[data-sw]',wrap).forEach(el=>el.addEventListener('click',()=>openSharedWorkout(el.dataset.sw)));
+}
+async function openSharedWorkout(id){
+  let w=_swCache[id];
+  openSheet('swSheet');
+  _swReviewStars=0;
+  if(w) renderSwBody(w, null, null, false);
+  else { const b=$('#sw-body'); if(b) b.innerHTML='<div class="empty" style="padding:24px;">Laden…</div>'; }
+  try{ const wr=await supa.from('shared_workouts').select('*').eq('id',id).maybeSingle(); if(wr&&wr.data){ w=wr.data; _swCache[id]=w; } }catch(e){}
+  if(!w){ const b=$('#sw-body'); if(b) b.innerHTML='<div class="empty" style="padding:24px;">Kon de workout niet laden.</div>'; return; }
+  let reviews=[], myReview=null, liked=false;
+  try{ const rv=await supa.from('workout_reviews').select('*').eq('workout_id',id).order('created_at',{ascending:false}); reviews=rv.data||[]; myReview=reviews.find(r=>r.user_id===supaUser.id)||null; }catch(e){}
+  try{ const lk=await supa.from('workout_likes').select('user_id').eq('workout_id',id).eq('user_id',supaUser.id).maybeSingle(); liked=!!(lk&&lk.data); }catch(e){}
+  _swReviewStars = myReview? myReview.stars : 0;
+  renderSwBody(w, reviews, myReview, liked);
+}
+function renderSwBody(w, reviews, myReview, liked){
+  const exs=(w.exercises||[]);
+  const exHTML=exs.map(e=>`<div class="pd-set"><span class="pd-setv" style="flex:1;">${esc(e.name||e.id||e)}</span></div>`).join('') || '<div style="font-size:12px;color:var(--txt3);padding:4px;">—</div>';
+  const curStars=_swReviewStars||(myReview?myReview.stars:0);
+  const stars5=[1,2,3,4,5].map(n=>`<span data-setstar="${n}" style="cursor:pointer;font-size:28px;line-height:1;color:${n<=curStars?'var(--gold)':'var(--txt3)'};">★</span>`).join('');
+  const revList=(reviews||[]).filter(r=>r.comment).map(r=>`<div class="cmt" style="margin-bottom:9px;">
+      <div class="avatar" style="background:#64748B;">${initialsOf(r.user_name)}</div>
+      <div class="cmt-body"><div class="cmt-name">${esc(r.user_name||'Atleet')}${r.stars?' · '+r.stars+'★':''}</div><div class="cmt-text">${esc(r.comment)}</div></div></div>`).join('') || '<div style="font-size:12px;color:var(--txt3);padding:4px 2px;">Nog geen reacties.</div>';
+  $('#sw-body').innerHTML=`
+    <div style="display:flex;align-items:center;gap:11px;margin-bottom:12px;">
+      ${profAvatar(_profCache[w.owner]||{name:w.owner_name,color:w.owner_color},46)}
+      <div style="flex:1;min-width:0;"><div style="font-size:18px;font-weight:700;">${esc(w.name||'Workout')}</div>
+        <div style="font-size:12px;color:var(--txt3);">van ${esc(w.owner_name||'iemand')} · ${starStr(w)}</div></div>
+    </div>
+    <div class="sect">Oefeningen (${exs.length})</div>
+    <div class="pd-ex" style="margin-bottom:12px;">${exHTML}</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button class="btn" id="sw-import" style="flex:1;">${icon('i-plus')} Opslaan</button>
+      <button class="btn primary" id="sw-start" style="flex:1;">${icon('i-play')} Start</button>
+    </div>
+    <button class="btn sm" id="sw-like" style="width:auto;padding:8px 16px;margin-bottom:14px;${liked?'':'background:transparent;border:1px solid var(--line2);color:var(--txt2);'}">${icon('i-heart')} ${liked?'Geliked':'Like'} · ${w.likes||0}</button>
+    <div class="sect">Jouw beoordeling</div>
+    <div style="display:flex;gap:5px;margin:5px 0 10px;" id="sw-stars">${stars5}</div>
+    <textarea class="note-ta" id="sw-comment" placeholder="Schrijf een reactie (optioneel)…">${myReview&&myReview.comment?esc(myReview.comment):''}</textarea>
+    <button class="btn" id="sw-review-send" style="width:100%;margin-bottom:16px;">Beoordeling plaatsen</button>
+    <div class="sect">Reacties</div>
+    <div>${revList}</div>`;
+  const imp=$('#sw-import'); if(imp) imp.addEventListener('click',()=>importSharedWorkout(w,false));
+  const st=$('#sw-start'); if(st) st.addEventListener('click',()=>importSharedWorkout(w,true));
+  const lk=$('#sw-like'); if(lk) lk.addEventListener('click',()=>toggleLike(w,!liked));
+  $$('#sw-stars [data-setstar]').forEach(s=>s.addEventListener('click',()=>{ _swReviewStars=parseInt(s.dataset.setstar); renderSwBody(w,reviews,myReview,liked); }));
+  const rs=$('#sw-review-send'); if(rs) rs.addEventListener('click',()=>submitReview(w));
+}
+function importSharedWorkout(w, startNow){
+  const exIds=(w.exercises||[]).map(e=>e.id||e);
+  if(!exIds.length){ toast('Deze workout heeft geen oefeningen','i-alert',true); return; }
+  const newId='imp'+Date.now();
+  state.workouts.push({id:newId, name:(w.name||'Workout'), exercises:exIds});
+  saveState();
+  if(startNow){ closeSheet('swSheet'); startSession(newId); }
+  else { toast('Opgeslagen in jouw workouts','i-check',true); try{ if($('#screen-library')&&$('#screen-library').classList.contains('active')) renderLibrary(); }catch(e){} }
+}
+async function toggleLike(w, like){
+  if(!socialReady()) return;
+  try{
+    if(like){ await supa.from('workout_likes').insert({workout_id:w.id, user_id:supaUser.id}); w.likes=(w.likes||0)+1; }
+    else { await supa.from('workout_likes').delete().eq('workout_id',w.id).eq('user_id',supaUser.id); w.likes=Math.max(0,(w.likes||0)-1); }
+  }catch(e){}
+  openSharedWorkout(w.id);
+}
+async function submitReview(w){
+  if(!socialReady()) return;
+  const stars=_swReviewStars||0;
+  const comment=($('#sw-comment')?$('#sw-comment').value:'').trim();
+  if(!stars){ toast('Kies een sterrenscore','i-alert',true); return; }
+  const meName=(state.profile&&state.profile.name)||'Atleet';
+  const btn=$('#sw-review-send'); if(btn) btn.disabled=true;
+  try{
+    const res=await supa.from('workout_reviews').upsert({workout_id:w.id, user_id:supaUser.id, user_name:meName, stars, comment}, { onConflict:'workout_id,user_id' });
+    if(res.error) throw res.error;
+  }catch(e){ if(btn) btn.disabled=false; toast('Plaatsen lukt nu niet','i-alert',true); return; }
+  toast('Beoordeling geplaatst','i-check',true);
+  openSharedWorkout(w.id);
+}
+
 /* LIBRARY */
-function renderLibrary(){
-  $('#lib-list').innerHTML=state.workouts.map(w=>`<div class="card wkrow">
+let _myShared={};
+function libRow(w){
+  const sh=_myShared[w.id];
+  const badge = sh ? `<span style="display:inline-block;font-size:10px;font-weight:700;color:var(--gold);background:var(--gold-dim);border:1px solid var(--goldline);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:1px;">${sh.visibility==='public'?'Iedereen':'Vrienden'}</span>` : '';
+  return `<div class="card wkrow">
     <div class="thumb">${icon(exMeta(w.exercises[0]).icon)}</div>
-    <div class="tap" data-start="${w.id}" style="flex:1;"><div class="nm">${w.name}</div>
+    <div class="tap" data-start="${w.id}" style="flex:1;min-width:0;"><div class="nm">${w.name}${badge}</div>
       <div class="meta">${w.exercises.map(e=>exMeta(e).name).slice(0,2).join(', ')}${w.exercises.length>2?'…':''}</div></div>
+    <button class="iconbtn ghost" data-sharew="${w.id}" aria-label="Delen">${icon(sh?'i-check-circle':'i-share')}</button>
     <button class="iconbtn ghost" data-edit="${w.id}" aria-label="Regels">${icon('i-sliders')}</button>
-    <div class="playbtn" data-start="${w.id}">${icon('i-play')}</div></div>`).join('');
+    <div class="playbtn" data-start="${w.id}">${icon('i-play')}</div></div>`;
+}
+function bindLibrary(){
   $$('[data-start]',$('#lib-list')).forEach(el=>el.addEventListener('click',()=>startSession(el.dataset.start)));
   $$('[data-edit]',$('#lib-list')).forEach(el=>el.addEventListener('click',()=>openRuleSheet(state.workouts.find(x=>x.id===el.dataset.edit).exercises[0])));
+  $$('[data-sharew]',$('#lib-list')).forEach(el=>el.addEventListener('click',()=>openShareWorkout(el.dataset.sharew)));
+}
+function renderLibrary(){
+  $('#lib-list').innerHTML=state.workouts.map(libRow).join('');
+  bindLibrary();
+  if(typeof loadMyShared==='function'){ loadMyShared().then(()=>{ if($('#screen-library')&&$('#screen-library').classList.contains('active')){ $('#lib-list').innerHTML=state.workouts.map(libRow).join(''); bindLibrary(); } }); }
 }
 $('#newWorkoutBtn').addEventListener('click',()=>{ go('exlib'); try{initExLib();}catch(e){} setTimeout(()=>{ try{startBuild();}catch(e){} },60); });
 $('#libGenBtn').addEventListener('click',()=>{ try{openGenSheet();}catch(e){} });
