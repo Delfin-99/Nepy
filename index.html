@@ -511,6 +511,13 @@
   .exdetail-step .num{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--acc-dim);
     color:var(--acc2);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;}
 </style>
+<style>
+.pe-lbl{display:block;font-size:12px;color:var(--txt2);margin:8px 2px 4px;}
+.pe-in{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line2);background:var(--surf2);color:var(--txt);font-size:15px;box-sizing:border-box;}
+.pe-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;}
+.pe-color{width:30px;height:30px;border-radius:50%;border:2px solid transparent;cursor:pointer;display:inline-block;}
+.pe-color.on{border-color:var(--txt);}
+</style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute"><defs>
@@ -730,11 +737,12 @@
     <div class="topbar"><div><div class="h">Profiel</div><div class="sub">jouw trainingsweek & instellingen</div></div>
       <button class="iconbtn" id="settingsBtn" aria-label="Instellingen"><svg class="ic"><use href="#i-settings"/></svg></button></div>
 
-    <div class="card" style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
-      <div style="width:54px;height:54px;border-radius:50%;background:var(--acc-deep);border:1px solid var(--acc);display:flex;align-items:center;justify-content:center;flex:0 0 auto;">
-        <svg class="ic" style="font-size:28px;color:var(--acc2)"><use href="#i-user"/></svg></div>
-      <div style="flex:1;"><div style="font-size:18px;font-weight:700;">Daan</div>
-        <div style="font-size:13px;color:var(--txt2);" id="prof-plan">—</div></div>
+    <div class="card tap" id="profileEditCard" style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+      <div id="prof-avatar" style="flex:0 0 auto;"></div>
+      <div style="flex:1;min-width:0;"><div style="font-size:18px;font-weight:700;" id="prof-name">Daan</div>
+        <div style="font-size:13px;color:var(--txt2);" id="prof-plan">—</div>
+        <div style="font-size:12px;color:var(--txt3);margin-top:2px;" id="prof-body"></div></div>
+      <svg class="ic" style="font-size:18px;color:var(--txt3)"><use href="#i-chevron-right"/></svg>
     </div>
 
     <div class="sect" style="margin-top:4px;">Mijn voorkeuren <button class="link" id="prefSettingsBtn">aanpassen ›</button></div>
@@ -1039,6 +1047,35 @@
 </div></div>
 
 <!-- settings / personalisatie sheet -->
+<div class="sheetbg" id="profileSheet"><div class="sheet"><div class="grab"></div>
+  <h3>Profiel aanpassen</h3>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:8px;">
+    <div id="pe-avatar"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn" id="pe-photo" style="background:transparent;border:1px solid var(--line2);color:var(--txt2);padding:8px 14px;"><svg class="ic"><use href="#i-user"/></svg> Foto kiezen</button>
+      <button class="btn" id="pe-photo-rm" style="background:transparent;border:1px solid var(--line2);color:var(--txt2);padding:8px 14px;"><svg class="ic"><use href="#i-x"/></svg> Verwijderen</button>
+    </div>
+    <input type="file" id="pe-photo-file" accept="image/*" style="display:none;" />
+  </div>
+  <label class="pe-lbl">Naam</label>
+  <input id="pe-name" class="pe-in" type="text" placeholder="Je naam" maxlength="30" />
+  <div class="pe-lbl">Kleur (als je geen foto kiest)</div>
+  <div id="pe-colors" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:2px;"></div>
+  <div class="set-sect" style="margin:14px 0 2px;">Lichaamsmaten</div>
+  <div class="pe-grid">
+    <div><label class="pe-lbl">Gewicht (<span class="pe-u">kg</span>)</label><input id="pe-weight" class="pe-in" type="number" inputmode="decimal" placeholder="-" /></div>
+    <div><label class="pe-lbl">Lengte (<span class="pe-mu">cm</span>)</label><input id="pe-height" class="pe-in" type="number" inputmode="decimal" placeholder="-" /></div>
+    <div><label class="pe-lbl">Vetpercentage (%)</label><input id="pe-bodyfat" class="pe-in" type="number" inputmode="decimal" placeholder="-" /></div>
+    <div><label class="pe-lbl">Borst (<span class="pe-mu">cm</span>)</label><input id="pe-chest" class="pe-in" type="number" inputmode="decimal" placeholder="-" /></div>
+    <div><label class="pe-lbl">Taille (<span class="pe-mu">cm</span>)</label><input id="pe-waist" class="pe-in" type="number" inputmode="decimal" placeholder="-" /></div>
+    <div><label class="pe-lbl">Arm (<span class="pe-mu">cm</span>)</label><input id="pe-arms" class="pe-in" type="number" inputmode="decimal" placeholder="-" /></div>
+    <div><label class="pe-lbl">Bovenbeen (<span class="pe-mu">cm</span>)</label><input id="pe-thighs" class="pe-in" type="number" inputmode="decimal" placeholder="-" /></div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:16px;">
+    <button class="btn" id="pe-cancel" style="flex:1;background:transparent;border:1px solid var(--line2);color:var(--txt2);">Annuleren</button>
+    <button class="btn" id="pe-save" style="flex:1;">Opslaan</button>
+  </div>
+</div></div>
 <div class="sheetbg" id="settingsSheet"><div class="sheet"><div class="grab"></div>
   <h3>Personalisatie</h3>
   <p class="ssub">Stel je profiel in zodat de app je perfecte trainingsweek kan adviseren.</p>
@@ -1159,7 +1196,7 @@ let state={
   rules:{},records:{},
   profile:{goal:'hypertrophy',exp:'intermediate',days:4,split:'ppl',
     dur:60, prio:[], prioSub:[], avoid:[], injury:'', unit:'kg', munit:'cm', weekstart:'mon',
-    theme:'blue', lang:'nl', celeb:'on', mode:'dark'},
+    theme:'blue', lang:'nl', celeb:'on', mode:'dark', avatar:'', color:'#3B82F6', weight:'', height:'', bodyfat:'', chest:'', waist:'', arms:'', thighs:''},
   /* eigen splitstijlen die de gebruiker toevoegt: {id,name,days:[{label,groups:[...]}]} */
   customSplits:[],
   /* per oefening een gekozen machine-type + merk: exId -> {equip, brand} */
@@ -1210,6 +1247,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_7fqaZc-MfDQ9Pe5cBdK0EA_bADuau03";
 const CLOUD_ENABLED = (typeof SUPABASE_URL==='string' && SUPABASE_URL.indexOf('http')===0 && typeof SUPABASE_ANON_KEY==='string' && SUPABASE_ANON_KEY.length>20);
 let supa=null;
 try{ if(CLOUD_ENABLED && window.supabase && window.supabase.createClient){ supa=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } }catch(e){ supa=null; }
+const APP_VERSION=2;
 try{ if(CLOUD_ENABLED){ var _ov0=document.getElementById('authOverlay'); if(_ov0) _ov0.style.display='flex'; } }catch(e){}
 const DEFAULT_PROFILE=JSON.parse(JSON.stringify(state.profile));
 /* === jouw Hevy-data, direct ingebakken — bij eerste keer openen geladen === */
@@ -2883,6 +2921,7 @@ function defaultRuleFor(exId){
 
 function renderProfile(){
   const p=state.profile;
+  try{ var _pn=document.getElementById('prof-name'); if(_pn) _pn.textContent=p.name||'Atleet'; var _av=document.getElementById('prof-avatar'); if(_av&&typeof avatarHTML==='function') _av.innerHTML=avatarHTML(54); var _bd=document.getElementById('prof-body'); if(_bd){ var _u=p.unit||'kg',_mu=p.munit||'cm',_b=[]; if(p.weight)_b.push(p.weight+' '+_u); if(p.height)_b.push(p.height+' '+_mu); if(p.bodyfat)_b.push(p.bodyfat+'% vet'); _bd.textContent=_b.join(' · '); } }catch(e){}
   $('#prof-plan').textContent=`${GOAL_NAME[p.goal]} · ${p.days}× p/w · ${SPLIT_NAME[p.split]}`;
   $('#prof-tokens').textContent=state.tokens;
   $('#prof-medals').textContent=state.medals.filter(m=>m.got).length+'/'+state.medals.length;
@@ -3964,6 +4003,104 @@ function applyHevyImport(text){
     lo.addEventListener('click',()=>{ if(confirm('Uitloggen?')) doSignOut(); });
   }
   try{ initAuth(); }catch(e){}
+})();
+
+/* ============================================================
+   PROFIEL bewerken: naam, avatar, lichaamsmaten
+   ============================================================ */
+function initialsOf(name){ const n=(name||'').trim(); if(!n) return '?'; const ps=n.split(/\s+/); return ((ps[0][0]||'')+(ps.length>1?ps[ps.length-1][0]:'')).toUpperCase(); }
+function avatarHTML(size){
+  const s=size||54, p=state.profile||{};
+  if(p.avatar){ return '<div style="width:'+s+'px;height:'+s+'px;border-radius:50%;overflow:hidden;flex:0 0 auto;background:#000;"><img src="'+p.avatar+'" style="width:100%;height:100%;object-fit:cover;display:block;"/></div>'; }
+  const col=p.color||'#3B82F6';
+  return '<div style="width:'+s+'px;height:'+s+'px;border-radius:50%;background:'+col+';color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto;font-weight:700;font-size:'+Math.round(s*0.4)+'px;">'+initialsOf(p.name)+'</div>';
+}
+const PE_COLORS=['#3B82F6','#8B5CF6','#22C55E','#F59E0B','#EF4444','#EC4899','#14B8A6','#64748B'];
+let _peAvatar='', _peColor='#3B82F6';
+function renderPeColors(){ const el=document.getElementById('pe-colors'); if(!el) return; el.innerHTML=PE_COLORS.map(c=>'<span class="pe-color '+((c===_peColor&&!_peAvatar)?'on':'')+'" data-pec="'+c+'" style="background:'+c+';"></span>').join(''); }
+function renderPeAvatar(){
+  const el=document.getElementById('pe-avatar'); if(!el) return; const s=84;
+  if(_peAvatar){ el.innerHTML='<div style="width:'+s+'px;height:'+s+'px;border-radius:50%;overflow:hidden;background:#000;"><img src="'+_peAvatar+'" style="width:100%;height:100%;object-fit:cover;display:block;"/></div>'; }
+  else { const nm=(document.getElementById('pe-name')||{}).value||state.profile.name||''; el.innerHTML='<div style="width:'+s+'px;height:'+s+'px;border-radius:50%;background:'+_peColor+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:'+Math.round(s*0.4)+'px;">'+initialsOf(nm)+'</div>'; }
+}
+function openProfileEdit(){
+  const p=state.profile; _peAvatar=p.avatar||''; _peColor=p.color||'#3B82F6';
+  const v=(id,val)=>{ const e=document.getElementById(id); if(e) e.value=(val==null?'':val); };
+  v('pe-name',p.name); v('pe-weight',p.weight); v('pe-height',p.height); v('pe-bodyfat',p.bodyfat);
+  v('pe-chest',p.chest); v('pe-waist',p.waist); v('pe-arms',p.arms); v('pe-thighs',p.thighs);
+  document.querySelectorAll('.pe-u').forEach(e=>e.textContent=p.unit||'kg');
+  document.querySelectorAll('.pe-mu').forEach(e=>e.textContent=p.munit||'cm');
+  renderPeColors(); renderPeAvatar();
+  if(typeof openSheet==='function') openSheet('profileSheet');
+}
+function _peNum(v){ const s=(v==null?'':v).toString().trim().replace(',','.'); if(s==='') return ''; const n=parseFloat(s); return isFinite(n)?String(n):''; }
+function peSave(){
+  const p=state.profile; const g=(id)=>{ const e=document.getElementById(id); return e?e.value:''; };
+  const nm=(g('pe-name')||'').trim();
+  p.name = nm || p.name || 'Atleet';
+  p.avatar=_peAvatar||''; p.color=_peColor;
+  p.weight=_peNum(g('pe-weight')); p.height=_peNum(g('pe-height')); p.bodyfat=_peNum(g('pe-bodyfat'));
+  p.chest=_peNum(g('pe-chest')); p.waist=_peNum(g('pe-waist')); p.arms=_peNum(g('pe-arms')); p.thighs=_peNum(g('pe-thighs'));
+  if(typeof saveState==='function') saveState();
+  try{ renderProfile(); }catch(e){} try{ renderHome(); }catch(e){}
+  if(typeof closeSheet==='function') closeSheet('profileSheet');
+  if(typeof toast==='function') toast('Profiel bijgewerkt','i-check',true);
+}
+function _peReadPhoto(file){
+  if(!file) return; const rd=new FileReader();
+  rd.onload=()=>{ const img=new Image(); img.onload=()=>{ try{
+      const side=Math.min(img.width,img.height), sx=(img.width-side)/2, sy=(img.height-side)/2, out=160;
+      const cv=document.createElement('canvas'); cv.width=out; cv.height=out;
+      cv.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, out, out);
+      _peAvatar=cv.toDataURL('image/jpeg',0.82); renderPeAvatar(); renderPeColors();
+    }catch(e){ if(typeof toast==='function') toast('Foto laden mislukt','i-alert',true); } };
+    img.onerror=()=>{ if(typeof toast==='function') toast('Foto laden mislukt','i-alert',true); }; img.src=rd.result; };
+  rd.readAsDataURL(file);
+}
+
+/* ============================================================
+   UPDATE-MELDING: app checkt of er online een nieuwere versie staat
+   ============================================================ */
+let _updShown=false;
+function showUpdateBanner(v){
+  if(_updShown) return; _updShown=true;
+  let bar=document.getElementById('updateBar');
+  if(!bar){
+    bar=document.createElement('div'); bar.id='updateBar';
+    bar.style.cssText='position:fixed;left:0;right:0;top:0;z-index:10000;background:var(--acc,#3B82F6);color:#fff;display:flex;align-items:center;gap:10px;justify-content:center;padding:10px 14px;font-size:14px;box-shadow:0 2px 10px rgba(0,0,0,.25);';
+    bar.innerHTML='<span>Er is een nieuwe versie van Forge.</span>';
+    const btn=document.createElement('button'); btn.textContent='Nu bijwerken';
+    btn.style.cssText='background:#fff;color:#111;border:0;border-radius:8px;padding:6px 12px;font-weight:700;cursor:pointer;';
+    btn.onclick=()=>{ try{ location.replace(location.pathname+'?u='+(v||Date.now())); }catch(e){ location.reload(); } };
+    bar.appendChild(btn);
+    document.body.appendChild(bar);
+  }
+  bar.style.display='flex';
+}
+async function checkForUpdate(){
+  try{
+    if(location.protocol==='file:') return;            // lokaal: niet checken
+    const res=await fetch(location.pathname+'?_v='+Date.now(), { cache:'no-store' });
+    if(!res || !res.ok) return;
+    const txt=await res.text();
+    const m=txt.match(/APP_VERSION=(\d+);/);
+    if(m){ const sv=parseInt(m[1],10); if(sv>APP_VERSION) showUpdateBanner(sv); }
+  }catch(e){}
+}
+
+/* wire profiel-bewerken + update-check */
+(function(){
+  const card=document.getElementById('profileEditCard'); if(card) card.addEventListener('click', openProfileEdit);
+  const ps=document.getElementById('pe-save'); if(ps) ps.addEventListener('click', peSave);
+  const pc=document.getElementById('pe-cancel'); if(pc) pc.addEventListener('click',()=>{ if(typeof closeSheet==='function') closeSheet('profileSheet'); });
+  const pp=document.getElementById('pe-photo'), pf=document.getElementById('pe-photo-file');
+  if(pp && pf){ pp.addEventListener('click',()=>pf.click()); pf.addEventListener('change',()=>{ _peReadPhoto(pf.files&&pf.files[0]); pf.value=''; }); }
+  const prm=document.getElementById('pe-photo-rm'); if(prm) prm.addEventListener('click',()=>{ _peAvatar=''; renderPeAvatar(); renderPeColors(); });
+  const pcol=document.getElementById('pe-colors'); if(pcol) pcol.addEventListener('click',e=>{ const t=e.target.closest('[data-pec]'); if(t){ _peColor=t.getAttribute('data-pec'); _peAvatar=''; renderPeAvatar(); renderPeColors(); } });
+  const pn=document.getElementById('pe-name'); if(pn) pn.addEventListener('input',()=>{ if(!_peAvatar) renderPeAvatar(); });
+  // update-check nu + telkens als de app weer op de voorgrond komt
+  try{ setTimeout(checkForUpdate, 1500); }catch(e){}
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) checkForUpdate(); });
 })();
 
 </script>
