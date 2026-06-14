@@ -728,6 +728,8 @@
       <div style="flex:1;"><div style="font-size:17px;font-weight:600;">Bekijk je records</div>
         <div style="font-size:13px;color:var(--txt2);">PR's per oefening</div></div>
       <svg class="ic" style="font-size:20px;color:var(--txt3)"><use href="#i-chevron-right"/></svg></div>
+    <div class="sect">Trofeeën</div>
+    <div id="rew-trophies" style="margin-bottom:6px;"></div>
     <div class="sect">Medailles</div>
     <div id="rew-medals" style="display:grid;grid-template-columns:1fr 1fr;gap:11px;"></div>
   </section>
@@ -883,7 +885,7 @@
 <div id="celebrate" aria-live="polite">
   <canvas id="confetti"></canvas>
   <div id="celebrate-inner">
-    <div class="cmedal">
+    <div class="cmedal" id="cmedal-wrap">
       <svg viewBox="0 0 200 240" class="cmedal-svg">
         <defs>
           <linearGradient id="goldgrad" x1="0" y1="0" x2="0" y2="1">
@@ -901,6 +903,20 @@
         <g id="cmedal-icon"></g>
         <text id="cmedal-line1" x="100" y="158" text-anchor="middle" fill="#5A3D08" font-size="20" font-weight="700"></text>
         <text id="cmedal-line2" x="100" y="180" text-anchor="middle" fill="#7A5510" font-size="11" font-weight="600"></text>
+      </svg>
+    </div>
+    <div class="cmedal" id="ctrophy-wrap" style="display:none;">
+      <svg viewBox="0 0 200 240" class="cmedal-svg">
+        <path d="M55 35 H145 V60 Q145 112 100 112 Q55 112 55 60 Z" fill="url(#goldgrad)" stroke="#E8A93A" stroke-width="3"/>
+        <rect x="58" y="36" width="84" height="7" rx="3" fill="#FFF1C9" opacity="0.65"/>
+        <path d="M55 45 Q28 45 32 73 Q35 90 57 87" fill="none" stroke="#E8A93A" stroke-width="7"/>
+        <path d="M145 45 Q172 45 168 73 Q165 90 143 87" fill="none" stroke="#E8A93A" stroke-width="7"/>
+        <rect x="91" y="110" width="18" height="22" fill="url(#goldgrad)" stroke="#E8A93A" stroke-width="2"/>
+        <rect x="73" y="131" width="54" height="12" rx="3" fill="url(#goldgrad)" stroke="#E8A93A" stroke-width="2"/>
+        <rect x="63" y="143" width="74" height="14" rx="3" fill="url(#goldgrad)" stroke="#E8A93A" stroke-width="2"/>
+        <path d="M100 52 l5.3 10.7 11.8 1.7 -8.5 8.3 2 11.8 -10.6-5.6 -10.6 5.6 2-11.8 -8.5-8.3 11.8-1.7 z" fill="#FFF1C9" opacity="0.9"/>
+        <text id="ctrophy-line1" x="100" y="182" text-anchor="middle" fill="#5A3D08" font-size="15" font-weight="700"></text>
+        <text id="ctrophy-line2" x="100" y="201" text-anchor="middle" fill="#7A5510" font-size="11" font-weight="600"></text>
       </svg>
     </div>
     <div class="ctitle" id="celebrate-title">Nieuwe medaille!</div>
@@ -926,6 +942,28 @@
   <div id="note-list"></div>
   <button class="btn" id="note-copy" style="width:100%;background:transparent;border:1px solid var(--line2);color:var(--txt2);margin-top:4px;">Alles kopiëren</button>
   <button class="btn" id="note-clear" style="display:none;width:100%;background:transparent;border:1px solid var(--line2);color:#ef4444;margin-top:8px;"><svg class="ic"><use href="#i-trash"/></svg> Alles verwijderen</button>
+</div></div>
+
+<div class="sheetbg" id="challengeSheet"><div class="sheet"><div class="grab"></div>
+  <h3>Nieuwe uitdaging</h3>
+  <p class="ssub">Daag vrienden uit. Wie het doel als eerste haalt, wint de trofee.</p>
+  <label class="pe-lbl">Oefening</label>
+  <button class="btn" id="ch-ex-btn" style="width:100%;justify-content:flex-start;background:transparent;border:1px solid var(--line2);color:var(--txt);margin-bottom:12px;"><svg class="ic"><use href="#i-dumbbell"/></svg> <span id="ch-ex-name">Kies een oefening</span></button>
+  <label class="pe-lbl">Type</label>
+  <div class="feed-tabs" id="ch-type" style="margin-bottom:12px;">
+    <div class="feed-tab on" data-chtype="weight">Zwaarste gewicht</div>
+    <div class="feed-tab" data-chtype="reps">Meeste reps</div>
+  </div>
+  <div class="pe-grid">
+    <div><label class="pe-lbl" id="ch-weight-label">Doelgewicht (kg)</label><input id="ch-weight" class="pe-in" type="number" inputmode="decimal" placeholder="bv. 100" /></div>
+    <div id="ch-reps-wrap" style="display:none;"><label class="pe-lbl">Aantal reps</label><input id="ch-reps" class="pe-in" type="number" inputmode="numeric" placeholder="bv. 8" /></div>
+  </div>
+  <label class="pe-lbl" style="margin-top:10px;">Wie daag je uit?</label>
+  <div id="ch-friends" style="margin-bottom:8px;"></div>
+  <div style="display:flex;gap:8px;margin-top:10px;">
+    <button class="btn" id="ch-cancel" style="flex:1;background:transparent;border:1px solid var(--line2);color:var(--txt2);">Annuleren</button>
+    <button class="btn" id="ch-send" style="flex:1;">Versturen</button>
+  </div>
 </div></div>
 
 <div class="sheetbg" id="gymSheet"><div class="sheet"><div class="grab"></div>
@@ -1085,7 +1123,7 @@
   <label class="pe-lbl">Bio (optioneel)</label>
   <input id="pe-bio" class="pe-in" type="text" placeholder="bv. PPL · focus op bench" maxlength="80" />
   <label for="pe-public" style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surf2);border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin:12px 0 2px;cursor:pointer;">
-    <span><span style="font-size:14px;font-weight:600;">Openbaar profiel</span><br><span style="font-size:12px;color:var(--txt3);">vrienden kunnen je stats &amp; records zien</span></span>
+    <span><span style="font-size:14px;font-weight:600;">Openbaar profiel</span><br><span style="font-size:12px;color:var(--txt3);">Aan: iedereen ziet je stats, medailles &amp; trofeeën. Uit: alleen vrienden (jullie volgen elkaar).</span></span>
     <input type="checkbox" id="pe-public" style="width:20px;height:20px;flex:0 0 auto;accent-color:var(--acc);" />
   </label>
   <div class="pe-lbl">Kleur (als je geen foto kiest)</div>
@@ -1251,6 +1289,7 @@ let state={
   favorites:[],
   customExercises:[],
   devNotes:[],
+  trophies:[],
   gymEquip:{},
   medals:[],
 };
@@ -1276,7 +1315,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_7fqaZc-MfDQ9Pe5cBdK0EA_bADuau03";
 const CLOUD_ENABLED = (typeof SUPABASE_URL==='string' && SUPABASE_URL.indexOf('http')===0 && typeof SUPABASE_ANON_KEY==='string' && SUPABASE_ANON_KEY.length>20);
 let supa=null;
 try{ if(CLOUD_ENABLED && window.supabase && window.supabase.createClient){ supa=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } }catch(e){ supa=null; }
-const APP_VERSION=4;
+const APP_VERSION=5;
 try{ if(CLOUD_ENABLED){ var _ov0=document.getElementById('authOverlay'); if(_ov0) _ov0.style.display='flex'; } }catch(e){}
 const DEFAULT_PROFILE=JSON.parse(JSON.stringify(state.profile));
 /* === jouw Hevy-data, direct ingebakken — bij eerste keer openen geladen === */
@@ -1419,13 +1458,22 @@ function showNextCelebration(){
   // korte tekst in de medaille (max ~10 tekens per regel)
   const big = it.big || '';
   const small = it.small || '';
-  $('#cmedal-line1').textContent=big;
-  $('#cmedal-line2').textContent=small;
-  // icoon in de medaille (boven de tekst) als er geen grote tekst is
-  $('#cmedal-icon').innerHTML = it.iconId
-    ? `<use href="#${it.iconId}" x="76" y="108" width="48" height="48" style="color:#7A5510" stroke="#7A5510"/>`
-    : '';
-  $('#celebrate-title').textContent = it.title || (it.type==='pr'?'Nieuw record!':'Nieuwe medaille!');
+  const isTrophy = (it.type==='trophy');
+  const mw=$('#cmedal-wrap'), tw=$('#ctrophy-wrap');
+  if(mw) mw.style.display = isTrophy?'none':'block';
+  if(tw) tw.style.display = isTrophy?'block':'none';
+  if(isTrophy){
+    $('#ctrophy-line1').textContent=big;
+    $('#ctrophy-line2').textContent=small;
+  } else {
+    $('#cmedal-line1').textContent=big;
+    $('#cmedal-line2').textContent=small;
+    // icoon in de medaille (boven de tekst) als er geen grote tekst is
+    $('#cmedal-icon').innerHTML = it.iconId
+      ? `<use href="#${it.iconId}" x="76" y="108" width="48" height="48" style="color:#7A5510" stroke="#7A5510"/>`
+      : '';
+  }
+  $('#celebrate-title').textContent = it.title || (isTrophy?'Uitdaging gewonnen!':it.type==='pr'?'Nieuw record!':'Nieuwe medaille!');
   $('#celebrate-desc').textContent = it.desc || '';
   $('#celebrate').classList.add('show');
   if(navigator.vibrate) navigator.vibrate([40,40,80]);
@@ -1744,11 +1792,14 @@ async function openFriendProfile(id){
 }
 function renderFriendBody(row){
   const following = (typeof myFollowing!=='undefined') && myFollowing.has(row.id);
+  const followsMe = (typeof myFollowers!=='undefined') && myFollowers.has(row.id);
+  const mutual = following && followsMe;
+  const canSee = (row.is_public!==false) || mutual;
   const s=row.stats||{};
   let body='';
-  if(row.is_public===false){
+  if(!canSee){
     body=`<div class="empty" style="padding:34px 18px;">${icon('i-x').replace('class="ic"','class="ic" style="font-size:28px;color:var(--txt3);display:block;margin:0 auto 10px;"')}
-      <b>${esc(row.name||'Atleet')}</b> heeft het profiel op privé staan.<br>Je ziet hun stats zodra ze het openbaar maken.</div>`;
+      <b>${esc(row.name||'Atleet')}</b> deelt het profiel alleen met vrienden.<br>Volg elkaar om hun stats, medailles en trofeeën te zien.</div>`;
   } else {
     const tops=(s.top||[]).map(t=>`<div class="pd-set"><span class="pd-setv" style="flex:1;">${esc(t[0])}</span><span class="pd-setv" style="color:var(--gold);font-weight:700;">${esc(t[1])}</span></div>`).join('')
       || '<div style="font-size:13px;color:var(--txt3);padding:5px 2px;">Nog geen records gedeeld.</div>';
@@ -1759,13 +1810,21 @@ function renderFriendBody(row){
           <div class="st"><b>${(s.last.volume||0).toLocaleString('nl-NL')}</b><span>kg</span></div>
           <div class="st"><b>${s.last.prCount||0}</b><span>PR's</span></div>
         </div></div>` : '';
+    const trophies=(s.trophies||[]);
+    const trHTML = trophies.length ? `<div class="sect" style="margin-top:8px;">Trofeeën · ${trophies.length}</div>`+trophies.map(t=>`<div class="card" style="display:flex;align-items:center;gap:11px;margin-bottom:8px;border:1px solid var(--goldline);background:var(--gold-dim);">
+        <div style="width:36px;height:36px;border-radius:9px;background:var(--gold-dim);border:1px solid var(--goldline);display:flex;align-items:center;justify-content:center;flex:0 0 auto;">${icon('i-trophy').replace('class="ic"','class="ic" style="font-size:19px;color:var(--gold)"')}</div>
+        <div style="min-width:0;flex:1;"><div style="font-size:12.5px;font-weight:700;line-height:1.2;">${esc(t.title||'Uitdaging')}</div>${t.from?`<div style="font-size:11px;color:var(--txt3);margin-top:2px;">door ${esc(t.from)}</div>`:''}</div></div>`).join('') : '';
+    const medals=(s.medalList||[]);
+    const mdHTML = medals.length ? `<div class="sect" style="margin-top:8px;">Medailles · ${s.medals||medals.length}</div><div style="display:flex;flex-wrap:wrap;gap:7px;">`+medals.map(m=>`<div class="prefpill" style="display:flex;align-items:center;gap:5px;">${icon(m.icon||'i-medal').replace('class="ic"','class="ic" style="font-size:14px;color:var(--gold)"')}${esc(m.label)}</div>`).join('')+`</div>` : '';
     body=`<div class="pd-summary">
         <div class="pd-s"><b>${s.workouts||0}</b><span>workouts</span></div>
         <div class="pd-s"><b>${s.prs||0}</b><span>PR's</span></div>
         <div class="pd-s"><b>${s.streak||0}</b><span>weken streak</span></div>
-        <div class="pd-s"><b>${s.medals||0}</b><span>medailles</span></div>
+        <div class="pd-s"><b>${trophies.length}</b><span>trofeeën</span></div>
       </div>
       ${last}
+      ${trHTML}
+      ${mdHTML}
       <div class="sect" style="margin-top:8px;">Beste lifts</div>
       <div class="pd-ex">${tops}</div>`;
   }
@@ -1889,33 +1948,192 @@ function renderMuscleGuide(){
   }).join('');
 }
 
-/* ===== uitdagingen met vrienden ===== */
-function renderChallenges(){
-  $('#chal-list').innerHTML=state.challenges.map(c=>{
-    const sorted=[...c.parts].sort((a,b)=>b.cur-a.cur);
-    const maxv=Math.max(c.target, ...c.parts.map(p=>p.cur));
-    const rows=sorted.map((p,i)=>{
-      const pct=Math.min(100,Math.round(p.cur/maxv*100));
-      const reached=p.cur>=c.target;
-      const valTxt = c.unit==='workouts' ? `${p.cur}` : c.unit==='%' ? `${p.cur}%` : `${fmt(p.cur)} ${c.unit}`;
-      return `<div class="chal-row">
-        <div class="avatar" style="width:30px;height:30px;font-size:12px;background:${p.color};">${p.initials}</div>
-        <div style="flex:1;min-width:0;">
-          <div class="chal-rowtop"><span class="chal-name">${p.name}${p.you?' (jij)':''}</span>
-            <span class="chal-val ${reached?'reached':''}">${valTxt}${reached?' '+icon('i-check'):''}</span></div>
-          <div class="chal-bar"><div class="chal-fill ${p.you?'you':''}" style="width:${pct}%;"></div></div>
-        </div></div>`;
-    }).join('');
-    const goalTxt = c.unit==='workouts' ? `Doel: ${c.target} workouts` : c.unit==='%' ? `Doel: ${c.target}% van lichaamsgewicht` : `Doel: ${c.target} ${c.unit}`;
-    return `<div class="card" style="margin-bottom:12px;">
-      <div style="display:flex;align-items:center;gap:9px;margin-bottom:3px;">
-        ${icon('i-target').replace('class="ic"','class="ic" style="font-size:20px;color:var(--acc2);"')}
-        <div style="font-size:15px;font-weight:700;flex:1;">${c.title}</div></div>
-      <div style="font-size:12px;color:var(--txt2);margin-bottom:13px;">${goalTxt} · loopt t/m ${c.deadline}</div>
-      ${rows}</div>`;
-  }).join('') + (state.challenges.length?'':`<div class="empty" style="padding:24px 14px;">Nog geen uitdagingen. In de online versie kun je samen met vrienden challenges aangaan.</div>`) + `<button class="btn" id="chal-new" style="margin-top:6px;background:transparent;border:1px solid var(--line2);color:var(--txt2);">${icon('i-plus')} Nieuwe uitdaging</button>`;
-  const nb=$('#chal-new'); if(nb) nb.addEventListener('click',()=>toast('Uitdaging starten werkt in de echte app','i-target',true));
+/* ===== uitdagingen met vrienden (Supabase) ===== */
+let _challenges=[], _chEx=null, _chType='weight', _chFriends=new Set();
+
+function maxWeightFor(exId){
+  let mx=0;
+  Object.keys(state.records||{}).forEach(k=>{ if(k.endsWith('|'+exId)){ const r=state.records[k]; if(r&&(r.weight||0)>mx) mx=r.weight; } });
+  return mx;
 }
+function challengeDesc(c){
+  const w=fmt(c.target_weight)+' '+(c.unit||'kg');
+  return c.type==='reps' ? `${c.ex_name}: ${c.target_reps}× bij ${w}` : `${c.ex_name}: ${w}`;
+}
+async function loadChallenges(){
+  if(!socialReady()){ _challenges=[]; return; }
+  try{
+    const res=await supa.from('challenges').select('*').order('created_at',{ascending:false});
+    if(res.error) throw res.error;
+    _challenges=res.data||[];
+  }catch(e){ _challenges=[]; }
+}
+function chalNewBtn(){ return `<button class="btn" id="chal-new" style="margin-top:10px;background:transparent;border:1px solid var(--line2);color:var(--txt2);">${icon('i-plus')} Nieuwe uitdaging</button>`; }
+function wireChalNew(){ const nb=$('#chal-new'); if(nb) nb.addEventListener('click',openChallengeCreate); }
+async function renderChallenges(){
+  const list=$('#chal-list'); if(!list) return;
+  if(!socialReady()){ list.innerHTML='<div class="empty" style="padding:24px 14px;">Log in om uitdagingen aan te gaan.</div>'+chalNewBtn(); wireChalNew(); return; }
+  list.innerHTML='<div class="empty" style="padding:20px 14px;">Laden…</div>';
+  await loadChallenges();
+  await autoClaimEligible();
+  const me=supaUser.id;
+  const active=_challenges.filter(c=>!c.winner);
+  const done=_challenges.filter(c=>c.winner);
+  let html='';
+  if(active.length) html+='<div class="sect">Lopend</div>'+active.map(c=>chalCard(c,me)).join('');
+  if(done.length) html+='<div class="sect" style="margin-top:6px;">Afgerond</div>'+done.map(c=>chalCard(c,me)).join('');
+  if(!active.length && !done.length) html+='<div class="empty" style="padding:24px 14px;">Nog geen uitdagingen. Daag een vriend uit met de knop hieronder.</div>';
+  html+=chalNewBtn();
+  list.innerHTML=html;
+  wireChalNew();
+  $$('[data-chdel]',list).forEach(b=>b.addEventListener('click',()=>deleteChallenge(b.dataset.chdel)));
+}
+function chalCard(c,me){
+  const won=!!c.winner;
+  const iWon=won&&c.winner===me;
+  const mine=c.creator===me;
+  const typeLabel=c.type==='reps'?'Meeste reps':'Zwaarste gewicht';
+  const status = won
+    ? `<div style="font-size:12px;font-weight:700;color:var(--gold);margin-top:8px;">${icon('i-trophy').replace('class="ic"','class="ic" style="font-size:14px;color:var(--gold);vertical-align:-2px;"')} Gewonnen door ${iWon?'jou! 🎉':esc(c.winner_name||'iemand')}</div>`
+    : `<div style="font-size:12px;color:var(--txt2);margin-top:8px;">${(c.participants||[]).length} deelnemers · nog niemand gewonnen</div>`;
+  return `<div class="card" style="margin-bottom:12px;${won?'border:1px solid var(--goldline);':''}">
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:3px;">
+      ${icon('i-target').replace('class="ic"','class="ic" style="font-size:20px;color:var(--acc2);flex:0 0 auto;"')}
+      <div style="font-size:15px;font-weight:700;flex:1;min-width:0;">${esc(challengeDesc(c))}</div>
+      ${mine&&!won?`<button class="iconbtn ghost" data-chdel="${c.id}" aria-label="Verwijderen" style="flex:0 0 auto;">${icon('i-trash')}</button>`:''}
+    </div>
+    <div style="font-size:12px;color:var(--txt3);">${typeLabel} · uitgedaagd door ${esc(c.creator_name||'iemand')}</div>
+    ${status}</div>`;
+}
+async function deleteChallenge(id){
+  if(!confirm('Deze uitdaging verwijderen?')) return;
+  try{ await supa.from('challenges').delete().eq('id',id); }catch(e){}
+  renderChallenges();
+}
+
+/* --- uitdaging aanmaken --- */
+function openChallengeCreate(){
+  if(!socialReady()){ toast('Log eerst in','i-alert',true); return; }
+  _chEx=null; _chType='weight'; _chFriends=new Set();
+  const en=$('#ch-ex-name'); if(en) en.textContent='Kies een oefening';
+  const w=$('#ch-weight'); if(w) w.value=''; const r=$('#ch-reps'); if(r) r.value='';
+  updateChType();
+  openSheet('challengeSheet');
+  loadFollowing().then(renderChFriends);
+}
+function pickChallengeExercise(){
+  if(typeof openExPicker!=='function') return;
+  openExPicker((exId)=>{ _chEx={id:exId, name:(exMeta(exId)&&exMeta(exId).name)||exId}; const el=$('#ch-ex-name'); if(el) el.textContent=_chEx.name; }, {title:'Oefening voor uitdaging'});
+}
+function updateChType(){
+  $$('#ch-type [data-chtype]').forEach(b=>b.classList.toggle('on',b.dataset.chtype===_chType));
+  const rg=$('#ch-reps-wrap'); if(rg) rg.style.display=_chType==='reps'?'block':'none';
+  const wl=$('#ch-weight-label'); if(wl) wl.textContent=_chType==='reps'?'Bij gewicht (kg)':'Doelgewicht (kg)';
+}
+async function renderChFriends(){
+  const wrap=$('#ch-friends'); if(!wrap) return;
+  const ids=[...myFollowing];
+  if(!ids.length){ wrap.innerHTML='<div class="empty" style="padding:12px;">Je volgt nog niemand. Volg eerst vrienden om ze uit te dagen.</div>'; return; }
+  let rows=[];
+  try{ const res=await supa.from('profiles').select('id,name,avatar,color').in('id',ids); rows=res.data||[]; }catch(e){}
+  wrap.innerHTML=rows.map(r=>`<label style="display:flex;align-items:center;gap:10px;padding:9px 4px;cursor:pointer;border-bottom:1px solid var(--line);">
+    ${profAvatar(r,34)}
+    <span style="flex:1;font-size:14px;font-weight:600;">${esc(r.name||'Atleet')}</span>
+    <input type="checkbox" data-chfriend="${r.id}" style="width:20px;height:20px;accent-color:var(--acc);" /></label>`).join('');
+  $$('[data-chfriend]',wrap).forEach(cb=>cb.addEventListener('change',()=>{ if(cb.checked) _chFriends.add(cb.dataset.chfriend); else _chFriends.delete(cb.dataset.chfriend); }));
+}
+async function createChallenge(){
+  if(!socialReady()) return;
+  if(!_chEx){ toast('Kies een oefening','i-alert',true); return; }
+  const w=parseFloat(($('#ch-weight').value||'').replace(',','.'))||0;
+  if(w<=0){ toast('Vul een doelgewicht in','i-alert',true); return; }
+  let reps=0;
+  if(_chType==='reps'){ reps=parseInt($('#ch-reps').value)||0; if(reps<=0){ toast('Vul het aantal reps in','i-alert',true); return; } }
+  if(!_chFriends.size){ toast('Kies minstens één vriend','i-alert',true); return; }
+  const parts=[supaUser.id, ..._chFriends];
+  const meName=(state.profile&&state.profile.name)||'Atleet';
+  const send=$('#ch-send'); if(send) send.disabled=true;
+  try{
+    const res=await supa.from('challenges').insert({
+      creator:supaUser.id, creator_name:meName, participants:parts,
+      ex_id:_chEx.id, ex_name:_chEx.name, type:_chType,
+      target_weight:w, target_reps:reps, unit:(state.profile&&state.profile.unit)||'kg'
+    });
+    if(res.error) throw res.error;
+  }catch(e){ if(send) send.disabled=false; toast('Versturen lukt nu niet','i-alert',true); return; }
+  if(send) send.disabled=false;
+  closeSheet('challengeSheet');
+  toast('Uitdaging verstuurd!','i-target',true);
+  renderChallenges();
+}
+
+/* --- winnen detecteren + claimen + trofee --- */
+function sessionMeetsChallenge(c, sessExs){
+  const exs=(sessExs||[]).filter(e=>e.exId===c.ex_id);
+  for(const e of exs){
+    for(const st of (e.sets||[])){
+      if(!st.done || st.type==='warmup') continue;
+      const w=parseFloat(String(st.kg).replace(',','.'))||0;
+      const r=parseInt(st.reps)||0;
+      if(c.type==='reps'){ if((c.target_reps||0)>0 && w>=(c.target_weight||0) && r>=(c.target_reps||0)) return true; }
+      else { if((c.target_weight||0)>0 && w>=(c.target_weight||0) && r>=1) return true; }
+    }
+  }
+  return false;
+}
+async function autoClaimEligible(){
+  if(!socialReady()) return;
+  const me=supaUser.id;
+  for(const c of _challenges){
+    if(c.winner) continue;
+    if(c.creator!==me && (c.participants||[]).indexOf(me)===-1) continue;
+    if(c.type==='weight' && (c.target_weight||0)>0 && maxWeightFor(c.ex_id) >= (c.target_weight||0)){
+      await claimChallenge(c);
+    }
+  }
+}
+async function checkChallengesOnFinish(sessExs){
+  if(!socialReady()) return;
+  await loadChallenges();
+  const me=supaUser.id;
+  for(const c of _challenges){
+    if(c.winner) continue;
+    if(c.creator!==me && (c.participants||[]).indexOf(me)===-1) continue;
+    const met = sessionMeetsChallenge(c, sessExs) || (c.type==='weight' && (c.target_weight||0)>0 && maxWeightFor(c.ex_id) >= (c.target_weight||0));
+    if(met) await claimChallenge(c);
+  }
+}
+async function claimChallenge(c){
+  if(!socialReady()) return false;
+  const me=supaUser.id;
+  const meName=(state.profile&&state.profile.name)||'Atleet';
+  try{
+    const res=await supa.from('challenges').update({winner:me, winner_name:meName, won_at:new Date().toISOString()}).eq('id',c.id).is('winner',null).select();
+    if(res.error) throw res.error;
+    if(res.data && res.data.length){ c.winner=me; c.winner_name=meName; awardTrophy(c); return true; }
+  }catch(e){}
+  return false;
+}
+function awardTrophy(c){
+  state.trophies=state.trophies||[];
+  if(state.trophies.some(t=>t.id===c.id)) return;
+  const title=challengeDesc(c);
+  const d=new Date();
+  const date=d.toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'});
+  state.trophies.unshift({id:c.id, title, from:c.creator_name||'', exId:c.ex_id, type:c.type, date});
+  saveState();
+  try{ if(typeof syncProfile==='function') syncProfile(); }catch(e){}
+  const exn=c.ex_name||'Uitdaging';
+  const big = exn.length<=12 ? exn : (exn.slice(0,11)+'…');
+  const small = c.type==='reps' ? (c.target_reps+'× '+fmt(c.target_weight)+(c.unit||'kg')) : (fmt(c.target_weight)+' '+(c.unit||'kg'));
+  celebrate({type:'trophy', title:'Uitdaging gewonnen!', desc:title+' — uitgedaagd door '+(c.creator_name||'iemand'), big, small});
+}
+(function wireChallenge(){
+  const eb=$('#ch-ex-btn'); if(eb) eb.addEventListener('click',pickChallengeExercise);
+  const tt=$('#ch-type'); if(tt) tt.addEventListener('click',e=>{ const b=e.target.closest('[data-chtype]'); if(!b) return; _chType=b.dataset.chtype; updateChType(); });
+  const cc=$('#ch-cancel'); if(cc) cc.addEventListener('click',()=>closeSheet('challengeSheet'));
+  const cs=$('#ch-send'); if(cs) cs.addEventListener('click',createChallenge);
+})();
 
 /* LIBRARY */
 function renderLibrary(){
@@ -2602,7 +2820,7 @@ $('#fin-done').addEventListener('click',()=>{
     state.history.unshift({id:'h'+Date.now(),title:session.name||'Workout',date:'Zojuist',
       durMin,prCount:nPR,volume:Math.round(vol),exercises:exDetail});
   }catch(e){}
-  closeSheet('finishSheet');stopRest();session=null;saveState();try{ if(typeof syncProfile==='function') syncProfile(); }catch(e){}go('home');renderHome();
+  closeSheet('finishSheet');stopRest();try{ if(typeof checkChallengesOnFinish==='function') checkChallengesOnFinish(session.exercises); }catch(e){}session=null;saveState();try{ if(typeof syncProfile==='function') syncProfile(); }catch(e){}go('home');renderHome();
 });
 
 /* STATS — pure SVG charts (no external libs) */
@@ -2868,6 +3086,15 @@ function sparkSVG(data,color){
 /* REWARDS */
 function renderRewards(){
   $('#rew-tokens').textContent=state.tokens;$('#rew-streak').textContent=weekStreak();
+  const trophies=state.trophies||[];
+  const tEl=$('#rew-trophies');
+  if(tEl){
+    tEl.innerHTML = trophies.length ? trophies.map(t=>`<div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:9px;border:1px solid var(--goldline);background:var(--gold-dim);">
+      <div style="width:42px;height:42px;border-radius:11px;background:var(--gold-dim);border:1px solid var(--goldline);display:flex;align-items:center;justify-content:center;flex:0 0 auto;">${icon('i-trophy').replace('class="ic"','class="ic" style="font-size:23px;color:var(--gold)"')}</div>
+      <div style="min-width:0;flex:1;"><div style="font-size:13px;font-weight:700;line-height:1.25;">${esc(t.title||'Uitdaging')}</div>
+        <div style="font-size:11px;color:var(--txt2);margin-top:2px;">${t.from?'uitgedaagd door '+esc(t.from)+' · ':''}${esc(t.date||'')}</div></div></div>`).join('')
+      : '<div class="empty" style="padding:16px 14px;">Nog geen trofeeën. Win een uitdaging van een vriend!</div>';
+  }
   const got=state.medals.filter(m=>m.got), locked=state.medals.filter(m=>!m.got);
   const cell=m=>`<div class="card tier-${m.tier}" data-medal="${m.id}" style="display:flex;align-items:center;gap:12px;${m.got?'':'opacity:.45;'}cursor:pointer;">
     <div style="width:42px;height:42px;border-radius:11px;background:${m.got?'var(--mcd)':'var(--surf2)'};border:1px solid ${m.got?'var(--mc)':'var(--line)'};display:flex;align-items:center;justify-content:center;flex:0 0 auto;">
@@ -4218,11 +4445,14 @@ function buildPublicStats(){
     const fav=recs.length?(recs[0].name||''):'';
     const h=(state.history&&state.history[0])||null;
     const last=h?{title:h.title||'Workout',date:h.date||'',durMin:h.durMin||0,prCount:h.prCount||0,volume:Math.round(h.volume||0)}:null;
+    const medalsGot=(state.medals||[]).filter(m=>m.got);
     return {
       workouts:(state.history||[]).length,
       prs:state.totalPRs||0,
       streak:(typeof weekStreak==='function'?weekStreak():0),
-      medals:(state.medals||[]).filter(m=>m.got).length,
+      medals:medalsGot.length,
+      medalList:medalsGot.slice(0,60).map(m=>({label:m.label,icon:m.icon,tier:m.tier})),
+      trophies:(state.trophies||[]).slice(0,60).map(t=>({title:t.title,from:t.from,date:t.date})),
       fav, top, last
     };
   }catch(e){ return {}; }
